@@ -13,6 +13,7 @@ const SkillDetailPage = React.lazy(() => import('@renderer/pages/settings/Skills
 const ToolsSettings = React.lazy(() => import('@renderer/pages/settings/ToolsSettings'));
 const AppearanceSettings = React.lazy(() => import('@renderer/pages/settings/AppearanceSettings'));
 const ModeSettings = React.lazy(() => import('@renderer/pages/settings/ModeSettings'));
+const TeamModelSettings = React.lazy(() => import('@renderer/pages/settings/TeamModelSettings'));
 const SystemSettings = React.lazy(() => import('@renderer/pages/settings/SystemSettings'));
 const WebuiSettings = React.lazy(() => import('@renderer/pages/settings/WebuiSettings'));
 const PetSettings = React.lazy(() => import('@renderer/pages/settings/PetSettings'));
@@ -72,6 +73,7 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
             element={TEAM_MODE_ENABLED ? withRouteFallback(TeamIndex) : <Navigate to='/guid' replace />}
           />
           <Route path='/settings/model' element={withRouteFallback(ModeSettings)} />
+          <Route path='/settings/teamModels' element={withRouteFallback(TeamModelSettings)} />
           <Route path='/assistants' element={withRouteFallback(AssistantSettings)} />
           {/* Assistants moved out of Settings to a top-level entry; keep a redirect
               so old deep links / back-nav still land on the new page. */}

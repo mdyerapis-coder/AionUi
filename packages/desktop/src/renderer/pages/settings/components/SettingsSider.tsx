@@ -11,6 +11,7 @@ import {
   Info,
   Lightning,
   LinkCloud,
+  People,
   Puzzle,
   Speed,
   System,
@@ -27,6 +28,7 @@ import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 export const BUILTIN_TAB_IDS = [
   'agent',
   'model',
+  'teamModels',
   'skills',
   'tools',
   'appearance',
@@ -83,6 +85,12 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
     // Build builtin items
     const builtinMap: Record<string, SiderItem> = {
       model: { id: 'model', label: t('settings.model'), icon: <LinkCloud />, path: 'model' },
+      teamModels: {
+        id: 'teamModels',
+        label: t('settings.teamModels', { defaultValue: 'Team Models' }),
+        icon: <People />,
+        path: 'teamModels',
+      },
       agent: {
         id: 'agent',
         label: t('settings.agents', { defaultValue: 'Agents' }),
