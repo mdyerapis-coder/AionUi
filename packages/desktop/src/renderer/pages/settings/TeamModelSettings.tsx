@@ -17,7 +17,6 @@
  * - Save/load/switch between team sets
  */
 
-import { useSettingsViewMode } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
 import { Button, Divider, Dropdown, Menu, Message, Popconfirm, Tag } from '@arco-design/web-react';
 import {
   Add,
@@ -34,6 +33,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTeamModels } from '@/renderer/hooks/useTeamModels';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
+import SettingsPageWrapper from './components/SettingsPageWrapper';
 import SettingsPageHeader from './components/SettingsPageHeader';
 import TeamRoleCard from './components/TeamRoleCard';
 import CreateTeamModal from './components/CreateTeamModal';
@@ -49,10 +49,8 @@ const TEAM_ICON_MAP: Record<string, React.ReactNode> = {
 
 // ==================== Component ====================
 
-const TeamModelSettings: React.FC = () => {
+const TeamModelSettingsInner: React.FC = () => {
   const { t } = useTranslation();
-  const viewMode = useSettingsViewMode();
-  const isPageMode = viewMode === 'page';
 
   const {
     teams,
@@ -140,7 +138,7 @@ const TeamModelSettings: React.FC = () => {
   // No providers configured state
   if (!isLoading && (!providers || providers.length === 0)) {
     return (
-      <div className={isPageMode ? 'flex flex-col gap-16px' : 'flex flex-col bg-2 rd-16px px-16px md:px-24px lg:px-28px py-16px md:py-18px'}>
+      <div className='flex flex-col gap-16px'>
         {messageContext}
         <SettingsPageHeader
           title={t('settings.teamModels')}
@@ -160,13 +158,7 @@ const TeamModelSettings: React.FC = () => {
   }
 
   return (
-    <div
-      className={
-        isPageMode
-          ? 'flex flex-col gap-16px'
-          : 'flex flex-col bg-2 rd-16px px-16px md:px-24px lg:px-28px py-16px md:py-18px'
-      }
-    >
+    <div className='flex flex-col gap-16px'>
       {messageContext}
 
       {/* Page Header */}
@@ -451,5 +443,12 @@ const TeamDetailView: React.FC<TeamDetailViewProps> = ({
     </div>
   );
 };
+
+/** Main component wrapped with SettingsPageWrapper for proper context */
+const TeamModelSettings: React.FC = () => (
+  <SettingsPageWrapper>
+    <TeamModelSettingsInner />
+  </SettingsPageWrapper>
+);
 
 export default TeamModelSettings;
