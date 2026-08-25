@@ -2,6 +2,8 @@
 
 All contributors (human and AI) must follow [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. ([Chinese version](CONTRIBUTING.zh.md))
 
+> Agent map: see [map/CLAUDE.md](map/CLAUDE.md) for a walkable object/process graph of the desktop/web-host/web-cli startup path (what a change hits, cited to path:line). Partial coverage — UI/mobile/examples not mapped.
+
 ## Code Conventions
 
 ### File & Directory Structure
