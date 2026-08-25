@@ -5,6 +5,7 @@ import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
 import { useExtensionSettingsTabs } from '@/renderer/hooks/system/useExtensionSettingsTabs';
 import {
   Cat,
+  ChartLine,
   Communication,
   Computer,
   Earth,
@@ -28,6 +29,7 @@ import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 export const BUILTIN_TAB_IDS = [
   'agent',
   'model',
+  'resourceTracker',
   'teamModels',
   'skills',
   'tools',
@@ -85,6 +87,12 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
     // Build builtin items
     const builtinMap: Record<string, SiderItem> = {
       model: { id: 'model', label: t('settings.model'), icon: <LinkCloud />, path: 'model' },
+      resourceTracker: {
+        id: 'resourceTracker',
+        label: t('settings.resourceTracker'),
+        icon: <ChartLine />,
+        path: 'resourceTracker',
+      },
       teamModels: {
         id: 'teamModels',
         label: t('settings.teamModels', { defaultValue: 'Team Models' }),

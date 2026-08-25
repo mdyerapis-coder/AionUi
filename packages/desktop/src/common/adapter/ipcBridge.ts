@@ -50,6 +50,12 @@ import type {
   UpdateProviderRequest,
 } from '../types/provider/providerApi';
 import type {
+  RefreshResourceTrackerParams,
+  RemoveResourceTrackerCredentialParams,
+  ResourceTrackerProvider,
+  SaveResourceTrackerCredentialParams,
+} from '../types/provider/resourceTracker';
+import type {
   ITeamAgentRemovedEvent,
   ITeamAgentRenamedEvent,
   ITeamAgentRuntimeStatusEvent,
@@ -1411,6 +1417,20 @@ export const systemSettings = {
   ensureManagedAcpTool: httpPost<{ ready: boolean }, { scope: IRuntimeStatusScope; tool_id: string }>(
     '/api/system/ensure-managed-acp-tool'
   ),
+};
+
+// ---------------------------------------------------------------------------
+// Resource tracker — stays in the Electron host so credentials never cross
+// back into either the desktop or remote WebUI renderer.
+// ---------------------------------------------------------------------------
+
+export const resourceTracker = {
+  list: bridge.buildProvider<ResourceTrackerProvider[], void>('resource-tracker:list'),
+  saveCredential: bridge.buildProvider<void, SaveResourceTrackerCredentialParams>('resource-tracker:save-credential'),
+  removeCredential: bridge.buildProvider<void, RemoveResourceTrackerCredentialParams>(
+    'resource-tracker:remove-credential'
+  ),
+  refresh: bridge.buildProvider<ResourceTrackerProvider[], RefreshResourceTrackerParams>('resource-tracker:refresh'),
 };
 
 // ---------------------------------------------------------------------------

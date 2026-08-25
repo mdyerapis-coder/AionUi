@@ -10,6 +10,7 @@ import { type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtensionSettingsTabs } from '@/renderer/hooks/system/useExtensionSettingsTabs';
 import {
   Cat,
+  ChartLine,
   Communication,
   Computer,
   Earth,
@@ -41,6 +42,12 @@ type TranslateFn = (key: string, options?: { defaultValue?: string }) => string;
 export function getBuiltinSettingsNavItems(isDesktop: boolean, t: TranslateFn): NavItem[] {
   const builtinMap: Record<string, NavItem> = {
     model: { id: 'model', label: t('settings.model'), icon: <LinkCloud theme='outline' size='16' />, path: 'model' },
+    resourceTracker: {
+      id: 'resourceTracker',
+      label: t('settings.resourceTracker'),
+      icon: <ChartLine theme='outline' size='16' />,
+      path: 'resourceTracker',
+    },
     teamModels: {
       id: 'teamModels',
       label: t('settings.teamModels', { defaultValue: 'Team Models' }),

@@ -1,5 +1,36 @@
 {
   "title": "Configurações",
+  "resourceTracker": "Resource Tracker",
+  "resourceTrackerConfig": {
+    "description": "Check configured provider keys, balances, usage and available models without routing requests through OmniRoute.",
+    "provider": "Provider",
+    "balance": "Balance / credits",
+    "usage": "Usage",
+    "models": "Models",
+    "lastChecked": "Last checked",
+    "never": "Never",
+    "notAvailable": "n/a",
+    "balanceUnavailable": "See dashboard",
+    "dashboard": "Dashboard",
+    "replaceKeyPlaceholder": "Enter a new key to replace the stored key",
+    "keyRequired": "Enter an API key first",
+    "saved": "API key saved",
+    "operationFailed": "Resource tracker operation failed",
+    "removeConfirm": "Remove the stored API key for this provider?",
+    "securityNote": "Keys are encrypted on this device and are never returned to the browser. Checks run only when this page opens or you refresh manually.",
+    "status": {
+      "unconfigured": "Not configured",
+      "unchecked": "Not checked",
+      "available": "Available",
+      "unavailable": "Unavailable",
+      "error": "Error"
+    },
+    "detail": {
+      "balanceUnavailable": "This key cannot access a balance endpoint; use the provider dashboard.",
+      "invalidKey": "The provider rejected this key.",
+      "networkError": "The provider could not be reached. Try again later."
+    }
+  },
   "skillsHub": {
     "title": "Central de Habilidades",
     "description": "Gerencie centralmente os pacotes de habilidades de IA — instale uma vez e use em todos os assistentes.",
