@@ -1374,5 +1374,148 @@
     "clearConfirmContent": "앱 내 브라우저의 모든 사이트에서 로그아웃됩니다. 되돌릴 수 없습니다.",
     "clearSuccess": "인터넷 사용 정보를 삭제했습니다",
     "clearFailed": "인터넷 사용 정보 삭제에 실패했습니다"
+  },
+  "teamModels": "팀 모델",
+  "teamModelsConfig": {
+    "description": "AI 워크플로의 각 역할에 알맞은 모델을 배정하고 제안을 제공하는 모델 팀을 만듭니다.",
+    "presetTeams": "프리셋 팀",
+    "customTeams": "사용자 지정 팀",
+    "createTeam": "팀 만들기",
+    "editTeam": "팀 편집",
+    "duplicate": "복제",
+    "presetLabel": "프리셋",
+    "assigned": "배정됨",
+    "selectTeam": "팀 선택",
+    "selectTeamDesc": "왼쪽 목록에서 프리셋 팀을 고르거나 직접 사용자 지정 팀을 만드세요.",
+    "noProviders": "구성된 공급자가 없습니다",
+    "noProvidersDesc": "팀 모델을 설정하려면 모델 공급자를 하나 이상 구성해야 합니다. 모델 설정에서 공급자를 추가하세요.",
+    "autoAssign": "자동 배정",
+    "reset": "재설정",
+    "confirmReset": "이 팀의 모델 배정을 모두 재설정할까요?",
+    "confirmDelete": "이 사용자 지정 팀을 삭제할까요?",
+    "teamCreated": "팀을 만들었습니다",
+    "teamUpdated": "팀을 업데이트했습니다",
+    "teamDeleted": "팀을 삭제했습니다",
+    "teamReset": "모델 배정을 재설정했습니다",
+    "modelsAssigned": "모델을 자동으로 배정했습니다",
+    "smartSuggestion": "제안",
+    "assignedModel": "배정된 모델",
+    "selectModel": "모델 선택…",
+    "applyBest": "최적 적용",
+    "showSuggestions": "제안 {{count}}개 보기",
+    "hideSuggestions": "제안 숨기기",
+    "roleCount": "역할 {{count}}개",
+    "teamName": "팀 이름",
+    "teamNamePlaceholder": "예: 내 개발 팀",
+    "teamDescription": "설명",
+    "teamDescriptionPlaceholder": "이 팀의 용도를 입력…",
+    "teamIcon": "팀 아이콘",
+    "roles": "역할",
+    "addRole": "역할 추가",
+    "roleHeading": "역할",
+    "roleName": "역할 이름",
+    "roleNamePlaceholder": "예: 코드 리뷰",
+    "roleIcon": "아이콘",
+    "roleDescription": "설명",
+    "roleDescriptionPlaceholder": "이 역할이 하는 일…",
+    "capabilityRequirements": "필요한 능력",
+    "preset": {
+      "softwareDev": {
+        "name": "소프트웨어 개발 팀",
+        "desc": "아키텍처 설계, 구현, 코드 리뷰, 요약을 포함한 개발 워크플로입니다."
+      },
+      "contentCreation": {
+        "name": "콘텐츠 제작 팀",
+        "desc": "카피라이팅, 편집, 조사, 번역 역할로 이루어진 콘텐츠 파이프라인입니다."
+      },
+      "researchAnalysis": {
+        "name": "연구 및 분석 팀",
+        "desc": "데이터 분석, 문헌 검토, 보고서 작성, 분류 역할로 이루어진 분석 워크플로입니다."
+      }
+    },
+    "role": {
+      "architect": {
+        "name": "아키텍트",
+        "desc": "시스템 구조를 계획하고 API를 설계하며 상위 수준의 구조 결정을 내립니다."
+      },
+      "coder": {
+        "name": "코더",
+        "desc": "구현 코드를 작성하고 문제를 고치며 기술 부채를 처리합니다."
+      },
+      "reviewer": {
+        "name": "리뷰어",
+        "desc": "품질, 보안, 모범 사례 관점에서 코드를 검토합니다."
+      },
+      "summarizer": {
+        "name": "요약",
+        "desc": "긴 문서, 대화, 코드베이스를 간결한 요약으로 줄입니다."
+      },
+      "copywriter": {
+        "name": "카피라이터",
+        "desc": "독자에 맞게 잘 구성된 글을 작성합니다."
+      },
+      "editor": {
+        "name": "편집자",
+        "desc": "글을 교정하고 명확성과 어조를 다듬습니다."
+      },
+      "researcher": {
+        "name": "리서처",
+        "desc": "여러 출처에서 정보를 찾아 종합합니다."
+      },
+      "translator": {
+        "name": "번역가",
+        "desc": "의미와 어조를 지키며 언어 간에 번역합니다."
+      },
+      "dataAnalyst": {
+        "name": "데이터 분석가",
+        "desc": "데이터셋을 분석하고 패턴과 인사이트를 찾습니다."
+      },
+      "literatureReviewer": {
+        "name": "문헌 검토",
+        "desc": "학술 논문과 기술 문서를 검토합니다."
+      },
+      "reportWriter": {
+        "name": "보고서 작성",
+        "desc": "명확하고 잘 구성된 분석 보고서를 작성합니다."
+      },
+      "triage": {
+        "name": "분류",
+        "desc": "들어온 요청이나 이슈를 빠르게 분류하고 우선순위를 정해 전달합니다."
+      }
+    },
+    "copySuffix": "{{name}} (사본)",
+    "notAssigned": "배정되지 않음",
+    "teamIconOption": {
+      "code": "코드",
+      "edit": "편집",
+      "analysis": "분석",
+      "custom": "사용자 지정"
+    },
+    "roleIconOption": {
+      "block": "블록",
+      "codeBrackets": "코드",
+      "previewOpen": "리뷰",
+      "docSearch": "문서",
+      "write": "작성",
+      "checkCorrect": "확인",
+      "search": "검색",
+      "translate": "번역",
+      "chartLine": "차트",
+      "bookOpen": "책",
+      "fileWord": "파일",
+      "filter": "필터",
+      "edit": "편집"
+    },
+    "capability": {
+      "text": "텍스트 생성",
+      "reasoning": "추론",
+      "functionCalling": "도구 호출",
+      "vision": "비전",
+      "creative": "창의",
+      "precise": "정밀",
+      "fast": "빠름",
+      "cheap": "저비용",
+      "webSearch": "웹 검색"
+    }
   }
 }

@@ -1373,5 +1373,148 @@
     "clearConfirmContent": "应用内浏览器中所有网站的登录状态都会被退出，且无法恢复。",
     "clearSuccess": "浏览数据已清空",
     "clearFailed": "清空浏览数据失败"
+  },
+  "teamModels": "团队模型",
+  "teamModelsConfig": {
+    "description": "创建精选模型团队，为 AI 工作流中的每个角色分配合适的模型，并提供建议。",
+    "presetTeams": "预设团队",
+    "customTeams": "自定义团队",
+    "createTeam": "创建团队",
+    "editTeam": "编辑团队",
+    "duplicate": "复制",
+    "presetLabel": "预设",
+    "assigned": "已分配",
+    "selectTeam": "选择团队",
+    "selectTeamDesc": "从左侧列表选择一个预设团队，或创建你自己的自定义团队。",
+    "noProviders": "尚未配置供应商",
+    "noProvidersDesc": "设置团队模型前，需要至少配置一个模型供应商。请前往模型设置添加供应商。",
+    "autoAssign": "自动分配",
+    "reset": "重置",
+    "confirmReset": "重置此团队中的所有模型分配？",
+    "confirmDelete": "删除此自定义团队？",
+    "teamCreated": "团队已创建",
+    "teamUpdated": "团队已更新",
+    "teamDeleted": "团队已删除",
+    "teamReset": "模型分配已重置",
+    "modelsAssigned": "已自动分配模型",
+    "smartSuggestion": "建议",
+    "assignedModel": "已分配模型",
+    "selectModel": "选择模型…",
+    "applyBest": "应用最佳",
+    "showSuggestions": "显示 {{count}} 条建议",
+    "hideSuggestions": "隐藏建议",
+    "roleCount": "{{count}} 个角色",
+    "teamName": "团队名称",
+    "teamNamePlaceholder": "例如：我的开发团队",
+    "teamDescription": "描述",
+    "teamDescriptionPlaceholder": "描述这个团队的用途…",
+    "teamIcon": "团队图标",
+    "roles": "角色",
+    "addRole": "添加角色",
+    "roleHeading": "角色",
+    "roleName": "角色名称",
+    "roleNamePlaceholder": "例如：代码审查",
+    "roleIcon": "图标",
+    "roleDescription": "描述",
+    "roleDescriptionPlaceholder": "这个角色负责什么…",
+    "capabilityRequirements": "能力要求",
+    "preset": {
+      "softwareDev": {
+        "name": "软件开发团队",
+        "desc": "覆盖架构规划、编码、代码审查和总结的全栈开发流程。"
+      },
+      "contentCreation": {
+        "name": "内容创作团队",
+        "desc": "包含文案、编辑、调研和翻译角色的内容流水线。"
+      },
+      "researchAnalysis": {
+        "name": "研究与分析团队",
+        "desc": "包含数据分析、文献综述、报告撰写和分拣角色的分析流程。"
+      }
+    },
+    "role": {
+      "architect": {
+        "name": "架构师",
+        "desc": "规划系统架构、设计 API，并做出高层结构设计决策。"
+      },
+      "coder": {
+        "name": "编码",
+        "desc": "编写实现代码、排查问题并处理技术债。"
+      },
+      "reviewer": {
+        "name": "审查",
+        "desc": "审查代码的质量、安全性和最佳实践。"
+      },
+      "summarizer": {
+        "name": "总结",
+        "desc": "将长文档、对话和代码库压缩为简明摘要。"
+      },
+      "copywriter": {
+        "name": "文案",
+        "desc": "为不同读者撰写结构清晰、有吸引力的文字内容。"
+      },
+      "editor": {
+        "name": "编辑",
+        "desc": "校对、润色并改善文字的清晰度和语气。"
+      },
+      "researcher": {
+        "name": "研究员",
+        "desc": "从多个来源查找并综合信息。"
+      },
+      "translator": {
+        "name": "翻译",
+        "desc": "在保留含义和语气的前提下进行跨语言翻译。"
+      },
+      "dataAnalyst": {
+        "name": "数据分析师",
+        "desc": "分析数据集、识别模式并得出洞察。"
+      },
+      "literatureReviewer": {
+        "name": "文献综述",
+        "desc": "审阅学术论文和技术文档。"
+      },
+      "reportWriter": {
+        "name": "报告撰写",
+        "desc": "产出清晰、结构良好的分析报告。"
+      },
+      "triage": {
+        "name": "分拣",
+        "desc": "快速分类、排序并转交收到的请求或问题。"
+      }
+    },
+    "copySuffix": "{{name}}（副本）",
+    "notAssigned": "未分配",
+    "teamIconOption": {
+      "code": "代码",
+      "edit": "编辑",
+      "analysis": "分析",
+      "custom": "自定义"
+    },
+    "roleIconOption": {
+      "block": "架构",
+      "codeBrackets": "代码",
+      "previewOpen": "审查",
+      "docSearch": "文档",
+      "write": "写作",
+      "checkCorrect": "检查",
+      "search": "搜索",
+      "translate": "翻译",
+      "chartLine": "图表",
+      "bookOpen": "书籍",
+      "fileWord": "文件",
+      "filter": "筛选",
+      "edit": "编辑"
+    },
+    "capability": {
+      "text": "文本生成",
+      "reasoning": "推理",
+      "functionCalling": "工具调用",
+      "vision": "视觉",
+      "creative": "创意",
+      "precise": "精确",
+      "fast": "快速",
+      "cheap": "低成本",
+      "webSearch": "网页搜索"
+    }
   }
 }

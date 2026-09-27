@@ -1374,5 +1374,148 @@
     "clearConfirmContent": "應用內瀏覽器中所有網站的登入狀態都會被登出，且無法復原。",
     "clearSuccess": "瀏覽資料已清空",
     "clearFailed": "清空瀏覽資料失敗"
+  },
+  "teamModels": "團隊模型",
+  "teamModelsConfig": {
+    "description": "建立精選模型團隊，為 AI 工作流程中的每個角色指派合適的模型，並提供建議。",
+    "presetTeams": "預設團隊",
+    "customTeams": "自訂團隊",
+    "createTeam": "建立團隊",
+    "editTeam": "編輯團隊",
+    "duplicate": "複製",
+    "presetLabel": "預設",
+    "assigned": "已指派",
+    "selectTeam": "選擇團隊",
+    "selectTeamDesc": "從左側清單選擇一個預設團隊，或建立你自己的自訂團隊。",
+    "noProviders": "尚未設定供應商",
+    "noProvidersDesc": "設定團隊模型前，需要至少設定一個模型供應商。請前往模型設定新增供應商。",
+    "autoAssign": "自動指派",
+    "reset": "重設",
+    "confirmReset": "重設此團隊中的所有模型指派？",
+    "confirmDelete": "刪除此自訂團隊？",
+    "teamCreated": "團隊已建立",
+    "teamUpdated": "團隊已更新",
+    "teamDeleted": "團隊已刪除",
+    "teamReset": "模型指派已重設",
+    "modelsAssigned": "已自動指派模型",
+    "smartSuggestion": "建議",
+    "assignedModel": "已指派模型",
+    "selectModel": "選擇模型…",
+    "applyBest": "套用最佳",
+    "showSuggestions": "顯示 {{count}} 項建議",
+    "hideSuggestions": "隱藏建議",
+    "roleCount": "{{count}} 個角色",
+    "teamName": "團隊名稱",
+    "teamNamePlaceholder": "例如：我的開發團隊",
+    "teamDescription": "描述",
+    "teamDescriptionPlaceholder": "描述這個團隊的用途…",
+    "teamIcon": "團隊圖示",
+    "roles": "角色",
+    "addRole": "新增角色",
+    "roleHeading": "角色",
+    "roleName": "角色名稱",
+    "roleNamePlaceholder": "例如：程式碼審查",
+    "roleIcon": "圖示",
+    "roleDescription": "描述",
+    "roleDescriptionPlaceholder": "這個角色負責什麼…",
+    "capabilityRequirements": "能力需求",
+    "preset": {
+      "softwareDev": {
+        "name": "軟體開發團隊",
+        "desc": "涵蓋架構規劃、編碼、程式碼審查和摘要的全端開發流程。"
+      },
+      "contentCreation": {
+        "name": "內容創作團隊",
+        "desc": "包含文案、編輯、研究與翻譯角色的內容流程。"
+      },
+      "researchAnalysis": {
+        "name": "研究與分析團隊",
+        "desc": "包含資料分析、文獻回顧、報告撰寫與分流角色的分析流程。"
+      }
+    },
+    "role": {
+      "architect": {
+        "name": "架構師",
+        "desc": "規劃系統架構、設計 API，並做出高層結構設計決策。"
+      },
+      "coder": {
+        "name": "程式",
+        "desc": "撰寫實作程式碼、排除問題並處理技術債。"
+      },
+      "reviewer": {
+        "name": "審查",
+        "desc": "審查程式碼的品質、安全性與最佳實務。"
+      },
+      "summarizer": {
+        "name": "摘要",
+        "desc": "將長文件、對話和程式庫濃縮為簡潔摘要。"
+      },
+      "copywriter": {
+        "name": "文案",
+        "desc": "為不同讀者撰寫結構清楚、有吸引力的文字內容。"
+      },
+      "editor": {
+        "name": "編輯",
+        "desc": "校對、潤飾並改善文字的清晰度與語氣。"
+      },
+      "researcher": {
+        "name": "研究員",
+        "desc": "從多個來源查找並綜合訊息。"
+      },
+      "translator": {
+        "name": "翻譯",
+        "desc": "在保留含義與語氣的前提下進行跨語言翻譯。"
+      },
+      "dataAnalyst": {
+        "name": "資料分析師",
+        "desc": "分析資料集、辨識模式並產生洞察。"
+      },
+      "literatureReviewer": {
+        "name": "文獻回顧",
+        "desc": "審閱學術論文與技術文件。"
+      },
+      "reportWriter": {
+        "name": "報告撰寫",
+        "desc": "產出清晰、結構良好的分析報告。"
+      },
+      "triage": {
+        "name": "分流",
+        "desc": "快速分類、排序並轉交收到的請求或問題。"
+      }
+    },
+    "copySuffix": "{{name}}（副本）",
+    "notAssigned": "未指派",
+    "teamIconOption": {
+      "code": "程式碼",
+      "edit": "編輯",
+      "analysis": "分析",
+      "custom": "自訂"
+    },
+    "roleIconOption": {
+      "block": "架構",
+      "codeBrackets": "程式碼",
+      "previewOpen": "審查",
+      "docSearch": "文件",
+      "write": "寫作",
+      "checkCorrect": "檢查",
+      "search": "搜尋",
+      "translate": "翻譯",
+      "chartLine": "圖表",
+      "bookOpen": "書籍",
+      "fileWord": "檔案",
+      "filter": "篩選",
+      "edit": "編輯"
+    },
+    "capability": {
+      "text": "文字生成",
+      "reasoning": "推理",
+      "functionCalling": "工具呼叫",
+      "vision": "視覺",
+      "creative": "創意",
+      "precise": "精確",
+      "fast": "快速",
+      "cheap": "低成本",
+      "webSearch": "網頁搜尋"
+    }
   }
 }

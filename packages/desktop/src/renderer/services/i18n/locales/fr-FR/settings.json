@@ -1372,5 +1372,148 @@
     "clearConfirmContent": "Vous serez déconnecté de tous les sites du navigateur intégré. Cette action est irréversible.",
     "clearSuccess": "Données de navigation effacées",
     "clearFailed": "Échec de l'effacement des données de navigation"
+  },
+  "teamModels": "Modèles d'équipe",
+  "teamModelsConfig": {
+    "description": "Créez des équipes de modèles où chaque rôle d'un flux d'IA reçoit un modèle adapté, avec des suggestions.",
+    "presetTeams": "Équipes prédéfinies",
+    "customTeams": "Équipes personnalisées",
+    "createTeam": "Créer une équipe",
+    "editTeam": "Modifier l'équipe",
+    "duplicate": "Dupliquer",
+    "presetLabel": "Prédéfinie",
+    "assigned": "attribués",
+    "selectTeam": "Choisir une équipe",
+    "selectTeamDesc": "Choisissez une équipe prédéfinie dans la liste de gauche ou créez la vôtre.",
+    "noProviders": "Aucun fournisseur configuré",
+    "noProvidersDesc": "Configurez au moins un fournisseur de modèles avant de préparer les équipes. Ajoutez-le dans les réglages des modèles.",
+    "autoAssign": "Attribution automatique",
+    "reset": "Réinitialiser",
+    "confirmReset": "Réinitialiser toutes les attributions de modèle de cette équipe ?",
+    "confirmDelete": "Supprimer cette équipe personnalisée ?",
+    "teamCreated": "Équipe créée",
+    "teamUpdated": "Équipe mise à jour",
+    "teamDeleted": "Équipe supprimée",
+    "teamReset": "Attributions de modèle réinitialisées",
+    "modelsAssigned": "Modèles attribués automatiquement",
+    "smartSuggestion": "Suggestion",
+    "assignedModel": "Modèle attribué",
+    "selectModel": "Choisir un modèle…",
+    "applyBest": "Appliquer le meilleur",
+    "showSuggestions": "Afficher {{count}} suggestions",
+    "hideSuggestions": "Masquer les suggestions",
+    "roleCount": "{{count}} rôles",
+    "teamName": "Nom de l'équipe",
+    "teamNamePlaceholder": "p. ex. Mon équipe de développement",
+    "teamDescription": "Description",
+    "teamDescriptionPlaceholder": "Décrivez à quoi sert cette équipe…",
+    "teamIcon": "Icône de l'équipe",
+    "roles": "Rôles",
+    "addRole": "Ajouter un rôle",
+    "roleHeading": "Rôle",
+    "roleName": "Nom du rôle",
+    "roleNamePlaceholder": "p. ex. Revue de code",
+    "roleIcon": "Icône",
+    "roleDescription": "Description",
+    "roleDescriptionPlaceholder": "Ce que fait ce rôle…",
+    "capabilityRequirements": "Capacités requises",
+    "preset": {
+      "softwareDev": {
+        "name": "Équipe de développement logiciel",
+        "desc": "Un flux de développement avec architecture, code, revue et synthèse."
+      },
+      "contentCreation": {
+        "name": "Équipe de création de contenu",
+        "desc": "Une chaîne de contenu avec rédaction, édition, recherche et traduction."
+      },
+      "researchAnalysis": {
+        "name": "Équipe de recherche et d'analyse",
+        "desc": "Un flux d'analyse avec données, revue de littérature, rapports et tri."
+      }
+    },
+    "role": {
+      "architect": {
+        "name": "Architecte",
+        "desc": "Planifie l'architecture du système, conçoit les API et tranche les décisions de structure."
+      },
+      "coder": {
+        "name": "Développeur",
+        "desc": "Écrit le code, corrige les problèmes et traite la dette technique."
+      },
+      "reviewer": {
+        "name": "Relecteur",
+        "desc": "Relit le code pour la qualité, la sécurité et les bonnes pratiques."
+      },
+      "summarizer": {
+        "name": "Synthèse",
+        "desc": "Condense les longs documents, conversations et bases de code en résumés courts."
+      },
+      "copywriter": {
+        "name": "Rédacteur",
+        "desc": "Rédige des textes clairs et engageants pour différents publics."
+      },
+      "editor": {
+        "name": "Éditeur",
+        "desc": "Corrige le texte et améliore la clarté et le ton."
+      },
+      "researcher": {
+        "name": "Chercheur",
+        "desc": "Trouve et synthétise des informations issues de plusieurs sources."
+      },
+      "translator": {
+        "name": "Traducteur",
+        "desc": "Traduit d'une langue à l'autre en conservant le sens et le ton."
+      },
+      "dataAnalyst": {
+        "name": "Analyste de données",
+        "desc": "Analyse des jeux de données, repère des motifs et en tire des conclusions."
+      },
+      "literatureReviewer": {
+        "name": "Revue de littérature",
+        "desc": "Examine des articles scientifiques et de la documentation technique."
+      },
+      "reportWriter": {
+        "name": "Rapports",
+        "desc": "Produit des rapports d'analyse clairs et bien structurés."
+      },
+      "triage": {
+        "name": "Tri",
+        "desc": "Classe, priorise et oriente rapidement les demandes ou problèmes entrants."
+      }
+    },
+    "copySuffix": "{{name}} (copie)",
+    "notAssigned": "Non attribué",
+    "teamIconOption": {
+      "code": "Code",
+      "edit": "Modifier",
+      "analysis": "Analyse",
+      "custom": "Personnel"
+    },
+    "roleIconOption": {
+      "block": "Bloc",
+      "codeBrackets": "Code",
+      "previewOpen": "Revue",
+      "docSearch": "Document",
+      "write": "Écriture",
+      "checkCorrect": "Vérification",
+      "search": "Recherche",
+      "translate": "Traduction",
+      "chartLine": "Graphique",
+      "bookOpen": "Livre",
+      "fileWord": "Fichier",
+      "filter": "Filtre",
+      "edit": "Modifier"
+    },
+    "capability": {
+      "text": "Génération de texte",
+      "reasoning": "Raisonnement",
+      "functionCalling": "Appel d'outils",
+      "vision": "Vision",
+      "creative": "Créatif",
+      "precise": "Précis",
+      "fast": "Rapide",
+      "cheap": "Économique",
+      "webSearch": "Recherche web"
+    }
   }
 }
