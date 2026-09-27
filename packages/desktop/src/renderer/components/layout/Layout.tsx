@@ -5,7 +5,6 @@
  */
 
 import { ipcBridge } from '@/common';
-import { TEAM_MODE_ENABLED } from '@/common/config/constants';
 import PwaPullToRefresh from '@/renderer/components/layout/PwaPullToRefresh';
 import Titlebar from '@/renderer/components/layout/Titlebar';
 import { Layout as ArcoLayout, Tooltip } from '@arco-design/web-react';
@@ -131,8 +130,7 @@ const Layout: React.FC<{
   useDesktopTurnNotification();
   const navigate = useNavigate();
   const location = useLocation();
-  const workspaceAvailable =
-    location.pathname.startsWith('/conversation/') || (TEAM_MODE_ENABLED && location.pathname.startsWith('/team/'));
+  const workspaceAvailable = location.pathname.startsWith('/conversation/') || location.pathname.startsWith('/team/');
   const toggleSider = useCallback(() => {
     setCollapsed((previous) => !previous);
   }, []);

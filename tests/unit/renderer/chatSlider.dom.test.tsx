@@ -21,12 +21,14 @@ const conv = (over: Record<string, unknown>): TChatConversation => over as unkno
 
 afterEach(() => cleanup());
 
-describe('ChatSlider (post-teardown: project Explorer only, legacy tree removed)', () => {
-  it('renders the project Explorer when the conversation has a project_id', () => {
+describe('ChatSlider (workspace column placeholder; Explorer lives on the project host)', () => {
+  it('renders an empty sider when the conversation has a project_id', () => {
+    // ChatLayout only mounts this sider while workspaceEnabled is true, which
+    // is false whenever project_id is set. The component itself stays empty.
     render(
       <ChatSlider conversation={conv({ id: 'c1', type: 'acp', project_id: 'proj-9', extra: { workspace: '/ws' } })} />
     );
-    expect(screen.getByTestId('explorer')).toHaveTextContent('proj-9');
+    expect(screen.queryByTestId('explorer')).not.toBeInTheDocument();
   });
 
   it('renders an empty sider (no legacy tree) for a workspace conversation without project_id', () => {
@@ -36,11 +38,11 @@ describe('ChatSlider (post-teardown: project Explorer only, legacy tree removed)
     expect(screen.queryByTestId('explorer')).not.toBeInTheDocument();
   });
 
-  it('renders the Explorer regardless of conversation type when project_id is set', () => {
+  it('renders an empty sider regardless of conversation type when project_id is set', () => {
     render(
       <ChatSlider conversation={conv({ id: 'c1', type: 'codex', project_id: 'proj-x', extra: { workspace: '/ws' } })} />
     );
-    expect(screen.getByTestId('explorer')).toHaveTextContent('proj-x');
+    expect(screen.queryByTestId('explorer')).not.toBeInTheDocument();
   });
 
   it('renders an empty sider for a pure-chat conversation (no project_id, no workspace)', () => {

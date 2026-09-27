@@ -1013,6 +1013,7 @@ export type I18nKey =
   | 'guid.workspace.specifyWorkspace'
   | 'guid.workspace.workInProject'
   | 'login.brand'
+  | 'login.errors.csrfError'
   | 'login.errors.empty'
   | 'login.errors.invalidCredentials'
   | 'login.errors.networkError'

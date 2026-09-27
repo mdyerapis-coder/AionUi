@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { ipcBridge } from '@/common';
-import { TEAM_MODE_ENABLED } from '@/common/config/constants';
 import ConversationSearchPopover from '@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover';
 import MobileConversationBrand from './MobileConversationBrand';
 import WindowControls from '../WindowControls';
@@ -211,26 +210,24 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
       return;
     }
 
-    // Team mode: show team name
-    if (TEAM_MODE_ENABLED) {
-      const teamMatch = location.pathname.match(/^\/team\/([^/]+)/);
-      const team_id = teamMatch?.[1];
-      if (team_id) {
-        let cancelled = false;
-        void ipcBridge.team.get
-          .invoke({ id: team_id })
-          .then((team) => {
-            if (cancelled) return;
-            setMobileCenterTitle(team?.name || appTitle);
-          })
-          .catch(() => {
-            if (cancelled) return;
-            setMobileCenterTitle(appTitle);
-          });
-        return () => {
-          cancelled = true;
-        };
-      }
+    // Team routes show the team name in the mobile title.
+    const teamMatch = location.pathname.match(/^\/team\/([^/]+)/);
+    const team_id = teamMatch?.[1];
+    if (team_id) {
+      let cancelled = false;
+      void ipcBridge.team.get
+        .invoke({ id: team_id })
+        .then((team) => {
+          if (cancelled) return;
+          setMobileCenterTitle(team?.name || appTitle);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setMobileCenterTitle(appTitle);
+        });
+      return () => {
+        cancelled = true;
+      };
     }
 
     // Single agent mode: show conversation name
@@ -394,7 +391,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
             if (conversation_id) {
               return <MobileConversationBrand conversation_id={conversation_id} fallbackTitle={mobileCenterTitle} />;
             }
-            const isTeamRoute = TEAM_MODE_ENABLED && /^\/team\/[^/]+/.test(location.pathname);
+            const isTeamRoute = /^\/team\/[^/]+/.test(location.pathname);
             return (
               <span className='app-titlebar__brand-mobile'>
                 {isTeamRoute && (

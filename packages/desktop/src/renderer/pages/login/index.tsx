@@ -177,6 +177,8 @@ const LoginPage: React.FC = () => {
               return t('login.errors.networkError');
             case 'serverError':
               return t('login.errors.serverError');
+            case 'csrfError':
+              return t('login.errors.csrfError');
             case 'unknown':
             default:
               return result.message ?? t('login.errors.unknown');
@@ -197,12 +199,6 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className='login-page'>
-      {/* <div className='login-page__background' aria-hidden='true'>
-        <div className='login-page__background-circle login-page__background-circle--lg' />
-        <div className='login-page__background-circle login-page__background-circle--md' />
-        <div className='login-page__background-circle login-page__background-circle--sm' />
-      </div> */}
-
       <div className='login-page__card'>
         <label className='login-page__lang-select-wrapper' htmlFor='lang-select'>
           <select

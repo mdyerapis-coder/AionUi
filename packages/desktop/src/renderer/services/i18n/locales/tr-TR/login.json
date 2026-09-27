@@ -21,6 +21,7 @@
     "tooManyAttempts": "Çok fazla deneme, lütfen daha sonra tekrar deneyin",
     "networkError": "Bağlantı başarısız, lütfen tekrar deneyin",
     "serverError": "Sunucu hatası, lütfen daha sonra tekrar deneyin",
+    "csrfError": "Güvenlik belirtecinin süresi doldu. Lütfen tekrar deneyin.",
     "unknown": "Giriş başarısız, lütfen tekrar deneyin"
   }
 }
