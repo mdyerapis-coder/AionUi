@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { IMessageAcpToolCall } from '@/common/chat/chatLib';
-import { normalizeAcpToolCall } from '@/common/chat/normalizeToolCall';
+import type { IMessageAcpToolCall, IMessageToolCall } from '@/common/chat/chatLib';
+import { normalizeAcpToolCall, normalizeToolCall } from '@/common/chat/normalizeToolCall';
 
 describe('normalizeToolCall', () => {
   it('normalizes compact snake_case acp tool calls from history responses', () => {
@@ -56,5 +56,19 @@ describe('normalizeToolCall', () => {
     } as unknown as IMessageAcpToolCall);
 
     expect(result?.output).toBe('[diff] /workspace/file.ts');
+  });
+
+  it('drops a tool_call whose call_id is empty', () => {
+    const result = normalizeToolCall({
+      type: 'tool_call',
+      content: {
+        call_id: '',
+        name: 'Glob',
+        status: 'running',
+        args: { pattern: '*.rs' },
+      },
+    } as IMessageToolCall);
+
+    expect(result).toBeUndefined();
   });
 });

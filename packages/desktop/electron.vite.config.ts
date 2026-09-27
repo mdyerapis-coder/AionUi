@@ -52,7 +52,7 @@ function iconParkPlugin() {
   };
 }
 
-// Common path aliases for main process and workers
+// Common path aliases for the main process
 const desktopSrcRoot = resolve('packages/desktop/src');
 const rendererRoot = resolve('packages/desktop/src/renderer');
 
@@ -61,8 +61,6 @@ const mainAliases = {
   '@common': resolve('packages/desktop/src/common'),
   '@renderer': rendererRoot,
   '@process': resolve('packages/desktop/src/process'),
-  '@worker': resolve('packages/desktop/src/process/worker'),
-  '@xterm/headless': resolve('packages/desktop/src/common/utils/shims/xterm-headless.ts'),
 };
 
 export default defineConfig(({ mode }) => {
@@ -213,7 +211,6 @@ export default defineConfig(({ mode }) => {
           '@common': resolve('packages/desktop/src/common'),
           '@renderer': resolve('packages/desktop/src/renderer'),
           '@process': resolve('packages/desktop/src/process'),
-          '@worker': resolve('packages/desktop/src/process/worker'),
           // Force ESM version of streamdown
           streamdown: resolve('node_modules/streamdown/dist/index.js'),
         },

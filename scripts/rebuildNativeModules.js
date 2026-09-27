@@ -68,16 +68,7 @@ function normalizeArch(arch) {
 /**
  * Get modules to rebuild based on platform
  */
-function getModulesToRebuild(platform) {
-  // Windows: Skip node-pty (cross-compilation fails with missing conpty API types)
-  // Linux: Skip node-pty (no ARM64 prebuilds available, cross-compilation requires ARM64 toolchain)
-  // macOS: Skip node-pty (cross-compilation from ARM64→x64 fails, use @lydell/node-pty-* prebuilts)
-  if (platform === 'win32' || platform === 'windows') {
-    return ['better-sqlite3'];
-  } else if (platform === 'linux') {
-    return ['better-sqlite3'];
-  }
-  // macOS: only rebuild better-sqlite3, skip node-pty
+function getModulesToRebuild(_platform) {
   return ['better-sqlite3'];
 }
 
@@ -357,11 +348,6 @@ function findNodeFiles(dir, maxDepth = 3, currentDepth = 0) {
 function verifyModuleBinary(moduleRoot, moduleName) {
   const binaryPathsToCheck = {
     'better-sqlite3': [path.join(moduleRoot, 'build', 'Release', 'better_sqlite3.node')],
-    'node-pty': [
-      path.join(moduleRoot, 'build', 'Release', 'pty.node'),
-      path.join(moduleRoot, 'build', 'Release', 'conpty.node'),
-      path.join(moduleRoot, 'build', 'Release', 'conpty_console_list.node'),
-    ],
   };
 
   const pathsToCheck = binaryPathsToCheck[moduleName] || [];

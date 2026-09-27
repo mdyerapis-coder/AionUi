@@ -113,7 +113,7 @@ jobs:
               '- TypeScript strict mode, prefer `type` over `interface`',
               '- Functional React components only, hooks with `use*` prefix',
               '- IMMUTABILITY: always create new objects, never mutate',
-              '- Path aliases: @/*, @process/*, @renderer/*, @worker/*',
+              '- Path aliases: @/*, @process/*, @renderer/*',
               '- UnoCSS atomic classes + CSS modules',
               '- English code comments, conventional commits',
               '',
