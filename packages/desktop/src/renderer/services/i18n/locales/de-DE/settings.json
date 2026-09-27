@@ -1372,5 +1372,148 @@
     "clearConfirmContent": "Du wirst von allen Websites im integrierten Browser abgemeldet. Das kann nicht rückgängig gemacht werden.",
     "clearSuccess": "Browserdaten gelöscht",
     "clearFailed": "Browserdaten konnten nicht gelöscht werden"
+  },
+  "teamModels": "Team-Modelle",
+  "teamModelsConfig": {
+    "description": "Lege Modell-Teams an, in denen jede Rolle eines KI-Ablaufs ein passendes Modell bekommt, inklusive Vorschlägen.",
+    "presetTeams": "Vorgegebene Teams",
+    "customTeams": "Eigene Teams",
+    "createTeam": "Team erstellen",
+    "editTeam": "Team bearbeiten",
+    "duplicate": "Duplizieren",
+    "presetLabel": "Vorgegeben",
+    "assigned": "zugewiesen",
+    "selectTeam": "Team auswählen",
+    "selectTeamDesc": "Wähle links ein vorgegebenes Team oder erstelle ein eigenes.",
+    "noProviders": "Keine Anbieter konfiguriert",
+    "noProvidersDesc": "Lege mindestens einen Modellanbieter an, bevor du Team-Modelle einrichtest. Anbieter fügst du unter Modelle hinzu.",
+    "autoAssign": "Automatisch zuweisen",
+    "reset": "Zurücksetzen",
+    "confirmReset": "Alle Modellzuweisungen in diesem Team zurücksetzen?",
+    "confirmDelete": "Dieses eigene Team löschen?",
+    "teamCreated": "Team erstellt",
+    "teamUpdated": "Team aktualisiert",
+    "teamDeleted": "Team gelöscht",
+    "teamReset": "Modellzuweisungen zurückgesetzt",
+    "modelsAssigned": "Modelle automatisch zugewiesen",
+    "smartSuggestion": "Vorschlag",
+    "assignedModel": "Zugewiesenes Modell",
+    "selectModel": "Modell auswählen…",
+    "applyBest": "Bestes übernehmen",
+    "showSuggestions": "{{count}} Vorschläge anzeigen",
+    "hideSuggestions": "Vorschläge ausblenden",
+    "roleCount": "{{count}} Rollen",
+    "teamName": "Teamname",
+    "teamNamePlaceholder": "z. B. Mein Entwicklerteam",
+    "teamDescription": "Beschreibung",
+    "teamDescriptionPlaceholder": "Wofür dieses Team da ist…",
+    "teamIcon": "Teamsymbol",
+    "roles": "Rollen",
+    "addRole": "Rolle hinzufügen",
+    "roleHeading": "Rolle",
+    "roleName": "Rollenname",
+    "roleNamePlaceholder": "z. B. Code-Review",
+    "roleIcon": "Symbol",
+    "roleDescription": "Beschreibung",
+    "roleDescriptionPlaceholder": "Was diese Rolle tut…",
+    "capabilityRequirements": "Fähigkeitsanforderungen",
+    "preset": {
+      "softwareDev": {
+        "name": "Softwareentwicklungsteam",
+        "desc": "Ein Entwicklungsablauf mit Architektur, Code, Review und Zusammenfassung."
+      },
+      "contentCreation": {
+        "name": "Content-Team",
+        "desc": "Eine Content-Kette mit Text, Lektorat, Recherche und Übersetzung."
+      },
+      "researchAnalysis": {
+        "name": "Recherche- und Analyseteam",
+        "desc": "Ein Analyseablauf mit Datenanalyse, Literaturreview, Berichten und Vorsortierung."
+      }
+    },
+    "role": {
+      "architect": {
+        "name": "Architekt",
+        "desc": "Plant die Systemarchitektur, entwirft APIs und trifft strukturelle Entscheidungen."
+      },
+      "coder": {
+        "name": "Entwickler",
+        "desc": "Schreibt Implementierungscode, behebt Fehler und kümmert sich um technische Schulden."
+      },
+      "reviewer": {
+        "name": "Reviewer",
+        "desc": "Prüft Code auf Qualität, Sicherheit und gute Praxis."
+      },
+      "summarizer": {
+        "name": "Zusammenfassung",
+        "desc": "Verdichtet lange Dokumente, Gespräche und Codebasen zu kurzen Zusammenfassungen."
+      },
+      "copywriter": {
+        "name": "Texter",
+        "desc": "Schreibt klare, ansprechende Texte für verschiedene Zielgruppen."
+      },
+      "editor": {
+        "name": "Lektor",
+        "desc": "Korrigiert Texte und verbessert Klarheit und Ton."
+      },
+      "researcher": {
+        "name": "Recherche",
+        "desc": "Findet und bündelt Informationen aus mehreren Quellen."
+      },
+      "translator": {
+        "name": "Übersetzer",
+        "desc": "Übersetzt Inhalte und behält Bedeutung und Ton bei."
+      },
+      "dataAnalyst": {
+        "name": "Datenanalyst",
+        "desc": "Analysiert Datensätze, erkennt Muster und leitet Erkenntnisse ab."
+      },
+      "literatureReviewer": {
+        "name": "Literaturreview",
+        "desc": "Sichtet Fachartikel und technische Dokumentation."
+      },
+      "reportWriter": {
+        "name": "Berichte",
+        "desc": "Schreibt klare, gut gegliederte Analyseberichte."
+      },
+      "triage": {
+        "name": "Vorsortierung",
+        "desc": "Ordnet eingehende Anfragen schnell ein, priorisiert sie und leitet sie weiter."
+      }
+    },
+    "copySuffix": "{{name}} (Kopie)",
+    "notAssigned": "Nicht zugewiesen",
+    "teamIconOption": {
+      "code": "Code",
+      "edit": "Bearbeiten",
+      "analysis": "Analyse",
+      "custom": "Eigenes"
+    },
+    "roleIconOption": {
+      "block": "Block",
+      "codeBrackets": "Code",
+      "previewOpen": "Review",
+      "docSearch": "Dokument",
+      "write": "Schreiben",
+      "checkCorrect": "Prüfung",
+      "search": "Suche",
+      "translate": "Übersetzen",
+      "chartLine": "Diagramm",
+      "bookOpen": "Buch",
+      "fileWord": "Datei",
+      "filter": "Filter",
+      "edit": "Bearbeiten"
+    },
+    "capability": {
+      "text": "Textgenerierung",
+      "reasoning": "Schlussfolgern",
+      "functionCalling": "Werkzeugaufrufe",
+      "vision": "Bildverstehen",
+      "creative": "Kreativ",
+      "precise": "Präzise",
+      "fast": "Schnell",
+      "cheap": "Kostengünstig",
+      "webSearch": "Websuche"
+    }
   }
 }

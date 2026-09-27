@@ -1374,5 +1374,148 @@
     "clearConfirmContent": "アプリ内ブラウザーのすべてのサイトからサインアウトされます。この操作は取り消せません。",
     "clearSuccess": "閲覧データを消去しました",
     "clearFailed": "閲覧データの消去に失敗しました"
+  },
+  "teamModels": "チームモデル",
+  "teamModelsConfig": {
+    "description": "AI ワークフローの各役割に最適なモデルを割り当て、提案つきでモデルチームを作成します。",
+    "presetTeams": "プリセットチーム",
+    "customTeams": "カスタムチーム",
+    "createTeam": "チームを作成",
+    "editTeam": "チームを編集",
+    "duplicate": "複製",
+    "presetLabel": "プリセット",
+    "assigned": "割り当て済み",
+    "selectTeam": "チームを選択",
+    "selectTeamDesc": "左の一覧からプリセットチームを選ぶか、独自のカスタムチームを作成します。",
+    "noProviders": "プロバイダーが未設定です",
+    "noProvidersDesc": "チームモデルを設定するには、少なくとも 1 つのモデルプロバイダーが必要です。モデル設定でプロバイダーを追加してください。",
+    "autoAssign": "自動割り当て",
+    "reset": "リセット",
+    "confirmReset": "このチームのモデル割り当てをすべてリセットしますか？",
+    "confirmDelete": "このカスタムチームを削除しますか？",
+    "teamCreated": "チームを作成しました",
+    "teamUpdated": "チームを更新しました",
+    "teamDeleted": "チームを削除しました",
+    "teamReset": "モデル割り当てをリセットしました",
+    "modelsAssigned": "モデルを自動割り当てしました",
+    "smartSuggestion": "提案",
+    "assignedModel": "割り当てモデル",
+    "selectModel": "モデルを選択…",
+    "applyBest": "最適なものを適用",
+    "showSuggestions": "{{count}} 件の提案を表示",
+    "hideSuggestions": "提案を隠す",
+    "roleCount": "{{count}} 役割",
+    "teamName": "チーム名",
+    "teamNamePlaceholder": "例: 開発チーム",
+    "teamDescription": "説明",
+    "teamDescriptionPlaceholder": "このチームの用途を入力…",
+    "teamIcon": "チームアイコン",
+    "roles": "役割",
+    "addRole": "役割を追加",
+    "roleHeading": "役割",
+    "roleName": "役割名",
+    "roleNamePlaceholder": "例: コードレビュー",
+    "roleIcon": "アイコン",
+    "roleDescription": "説明",
+    "roleDescriptionPlaceholder": "この役割の仕事…",
+    "capabilityRequirements": "必要な能力",
+    "preset": {
+      "softwareDev": {
+        "name": "ソフトウェア開発チーム",
+        "desc": "アーキテクチャ設計、実装、コードレビュー、要約を含む開発ワークフローです。"
+      },
+      "contentCreation": {
+        "name": "コンテンツ制作チーム",
+        "desc": "コピーライティング、編集、調査、翻訳の役割を持つコンテンツ制作の流れです。"
+      },
+      "researchAnalysis": {
+        "name": "調査・分析チーム",
+        "desc": "データ分析、文献レビュー、レポート作成、トリアージの役割を持つ分析ワークフローです。"
+      }
+    },
+    "role": {
+      "architect": {
+        "name": "アーキテクト",
+        "desc": "システム構成を計画し、API を設計し、高レベルの構造を決めます。"
+      },
+      "coder": {
+        "name": "コーダー",
+        "desc": "実装コードを書き、不具合を直し、技術的負債に対応します。"
+      },
+      "reviewer": {
+        "name": "レビュアー",
+        "desc": "品質、セキュリティ、ベストプラクティスの観点でコードをレビューします。"
+      },
+      "summarizer": {
+        "name": "要約",
+        "desc": "長い文書、会話、コードベースを簡潔な要約にまとめます。"
+      },
+      "copywriter": {
+        "name": "コピーライター",
+        "desc": "読み手に合わせて、構成のよい文章を作成します。"
+      },
+      "editor": {
+        "name": "編集者",
+        "desc": "文章を校正し、明確さと調子を整えます。"
+      },
+      "researcher": {
+        "name": "リサーチャー",
+        "desc": "複数の情報源から情報を集め、整理します。"
+      },
+      "translator": {
+        "name": "翻訳者",
+        "desc": "意味と調子を保ったまま言語間で翻訳します。"
+      },
+      "dataAnalyst": {
+        "name": "データアナリスト",
+        "desc": "データセットを分析し、パターンと洞察を見つけます。"
+      },
+      "literatureReviewer": {
+        "name": "文献レビュー",
+        "desc": "論文や技術文書を読み比べます。"
+      },
+      "reportWriter": {
+        "name": "レポート作成",
+        "desc": "明確で構成のよい分析レポートを書きます。"
+      },
+      "triage": {
+        "name": "トリアージ",
+        "desc": "届いた依頼や課題をすばやく分類し、優先度を付けて振り分けます。"
+      }
+    },
+    "copySuffix": "{{name}}（コピー）",
+    "notAssigned": "未割り当て",
+    "teamIconOption": {
+      "code": "コード",
+      "edit": "編集",
+      "analysis": "分析",
+      "custom": "カスタム"
+    },
+    "roleIconOption": {
+      "block": "ブロック",
+      "codeBrackets": "コード",
+      "previewOpen": "レビュー",
+      "docSearch": "文書",
+      "write": "執筆",
+      "checkCorrect": "チェック",
+      "search": "検索",
+      "translate": "翻訳",
+      "chartLine": "グラフ",
+      "bookOpen": "書籍",
+      "fileWord": "ファイル",
+      "filter": "フィルター",
+      "edit": "編集"
+    },
+    "capability": {
+      "text": "テキスト生成",
+      "reasoning": "推論",
+      "functionCalling": "ツール呼び出し",
+      "vision": "ビジョン",
+      "creative": "創造性",
+      "precise": "正確さ",
+      "fast": "高速",
+      "cheap": "低コスト",
+      "webSearch": "Web 検索"
+    }
   }
 }

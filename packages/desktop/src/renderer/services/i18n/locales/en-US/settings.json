@@ -1381,7 +1381,7 @@
     "createTeam": "Create Team",
     "editTeam": "Edit Team",
     "duplicate": "Duplicate",
-    "preset": "Preset",
+    "presetLabel": "Preset",
     "assigned": "assigned",
     "selectTeam": "Select a Team",
     "selectTeamDesc": "Choose a preset team or create your own custom team from the list on the left.",
@@ -1410,7 +1410,7 @@
     "teamIcon": "Team Icon",
     "roles": "Roles",
     "addRole": "Add Role",
-    "role": "Role",
+    "roleHeading": "Role",
     "roleName": "Role Name",
     "roleNamePlaceholder": "e.g., Code Reviewer",
     "roleIcon": "Icon",
@@ -1432,30 +1432,88 @@
       }
     },
     "role": {
-      "architect": "Architect",
-      "architect.desc": "Plans system architecture, designs APIs, and makes high-level structural decisions.",
-      "coder": "Coder",
-      "coder.desc": "Writes implementation code, debugs issues, and handles technical debt.",
-      "reviewer": "Reviewer",
-      "reviewer.desc": "Reviews code for quality, security, and best practices compliance.",
-      "summarizer": "Summarizer",
-      "summarizer.desc": "Condenses long documents, conversations, and codebases into concise summaries.",
-      "copywriter": "Copywriter",
-      "copywriter.desc": "Creates engaging, well-structured written content for various audiences.",
-      "editor": "Editor",
-      "editor.desc": "Proofreads, polishes, and improves clarity and tone of written content.",
-      "researcher": "Researcher",
-      "researcher.desc": "Finds and synthesizes information from multiple sources.",
-      "translator": "Translator",
-      "translator.desc": "Translates content between languages while preserving meaning and tone.",
-      "dataAnalyst": "Data Analyst",
-      "dataAnalyst.desc": "Analyzes datasets, identifies patterns, and generates insights.",
-      "literatureReviewer": "Literature Reviewer",
-      "literatureReviewer.desc": "Reviews academic papers and technical documentation.",
-      "reportWriter": "Report Writer",
-      "reportWriter.desc": "Produces clear, well-structured analytical reports.",
-      "triage": "Triage",
-      "triage.desc": "Quickly categorizes, prioritizes, and routes incoming requests or issues."
+      "architect": {
+        "name": "Architect",
+        "desc": "Plans system architecture, designs APIs, and makes high-level structural decisions."
+      },
+      "coder": {
+        "name": "Coder",
+        "desc": "Writes implementation code, debugs issues, and handles technical debt."
+      },
+      "reviewer": {
+        "name": "Reviewer",
+        "desc": "Reviews code for quality, security, and best practices compliance."
+      },
+      "summarizer": {
+        "name": "Summarizer",
+        "desc": "Condenses long documents, conversations, and codebases into concise summaries."
+      },
+      "copywriter": {
+        "name": "Copywriter",
+        "desc": "Creates engaging, well-structured written content for various audiences."
+      },
+      "editor": {
+        "name": "Editor",
+        "desc": "Proofreads, polishes, and improves clarity and tone of written content."
+      },
+      "researcher": {
+        "name": "Researcher",
+        "desc": "Finds and synthesizes information from multiple sources."
+      },
+      "translator": {
+        "name": "Translator",
+        "desc": "Translates content between languages while preserving meaning and tone."
+      },
+      "dataAnalyst": {
+        "name": "Data Analyst",
+        "desc": "Analyzes datasets, identifies patterns, and generates insights."
+      },
+      "literatureReviewer": {
+        "name": "Literature Reviewer",
+        "desc": "Reviews academic papers and technical documentation."
+      },
+      "reportWriter": {
+        "name": "Report Writer",
+        "desc": "Produces clear, well-structured analytical reports."
+      },
+      "triage": {
+        "name": "Triage",
+        "desc": "Quickly categorizes, prioritizes, and routes incoming requests or issues."
+      }
+    },
+    "copySuffix": "{{name}} (Copy)",
+    "notAssigned": "Not assigned",
+    "teamIconOption": {
+      "code": "Code",
+      "edit": "Edit",
+      "analysis": "Analysis",
+      "custom": "Custom"
+    },
+    "roleIconOption": {
+      "block": "Block",
+      "codeBrackets": "Code",
+      "previewOpen": "Review",
+      "docSearch": "Document",
+      "write": "Write",
+      "checkCorrect": "Check",
+      "search": "Search",
+      "translate": "Translate",
+      "chartLine": "Chart",
+      "bookOpen": "Book",
+      "fileWord": "File",
+      "filter": "Filter",
+      "edit": "Edit"
+    },
+    "capability": {
+      "text": "Text Generation",
+      "reasoning": "Reasoning",
+      "functionCalling": "Tool Calling",
+      "vision": "Vision",
+      "creative": "Creative",
+      "precise": "Precise",
+      "fast": "Fast",
+      "cheap": "Cost-Effective",
+      "webSearch": "Web Search"
     }
   }
 }

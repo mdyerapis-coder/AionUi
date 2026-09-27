@@ -1372,5 +1372,148 @@
     "clearConfirmContent": "Uygulama içi tarayıcıdaki tüm sitelerden çıkış yapılacak. Bu işlem geri alınamaz.",
     "clearSuccess": "Tarama verileri temizlendi",
     "clearFailed": "Tarama verileri temizlenemedi"
+  },
+  "teamModels": "Takım Modelleri",
+  "teamModelsConfig": {
+    "description": "Bir yapay zeka iş akışındaki her role uygun bir model atayan ve öneriler sunan model takımları oluşturun.",
+    "presetTeams": "Hazır Takımlar",
+    "customTeams": "Özel Takımlar",
+    "createTeam": "Takım Oluştur",
+    "editTeam": "Takımı Düzenle",
+    "duplicate": "Çoğalt",
+    "presetLabel": "Hazır",
+    "assigned": "atandı",
+    "selectTeam": "Takım Seçin",
+    "selectTeamDesc": "Soldaki listeden hazır bir takım seçin veya kendi özel takımınızı oluşturun.",
+    "noProviders": "Sağlayıcı yapılandırılmadı",
+    "noProvidersDesc": "Takım modellerini ayarlamadan önce en az bir model sağlayıcısı yapılandırmanız gerekir. Sağlayıcı eklemek için Model ayarlarına gidin.",
+    "autoAssign": "Otomatik ata",
+    "reset": "Sıfırla",
+    "confirmReset": "Bu takımdaki tüm model atamaları sıfırlansın mı?",
+    "confirmDelete": "Bu özel takım silinsin mi?",
+    "teamCreated": "Takım oluşturuldu",
+    "teamUpdated": "Takım güncellendi",
+    "teamDeleted": "Takım silindi",
+    "teamReset": "Model atamaları sıfırlandı",
+    "modelsAssigned": "Modeller otomatik atandı",
+    "smartSuggestion": "Öneri",
+    "assignedModel": "Atanan model",
+    "selectModel": "Model seçin…",
+    "applyBest": "En iyisini uygula",
+    "showSuggestions": "{{count}} öneriyi göster",
+    "hideSuggestions": "Önerileri gizle",
+    "roleCount": "{{count}} rol",
+    "teamName": "Takım adı",
+    "teamNamePlaceholder": "örn. Geliştirme takımım",
+    "teamDescription": "Açıklama",
+    "teamDescriptionPlaceholder": "Bu takımın ne için olduğunu yazın…",
+    "teamIcon": "Takım simgesi",
+    "roles": "Roller",
+    "addRole": "Rol ekle",
+    "roleHeading": "Rol",
+    "roleName": "Rol adı",
+    "roleNamePlaceholder": "örn. Kod incelemesi",
+    "roleIcon": "Simge",
+    "roleDescription": "Açıklama",
+    "roleDescriptionPlaceholder": "Bu rol ne yapar…",
+    "capabilityRequirements": "Yetenek gereksinimleri",
+    "preset": {
+      "softwareDev": {
+        "name": "Yazılım Geliştirme Takımı",
+        "desc": "Mimari planlama, kodlama, kod incelemesi ve özetlemeyi kapsayan bir geliştirme akışı."
+      },
+      "contentCreation": {
+        "name": "İçerik Üretim Takımı",
+        "desc": "Metin yazarlığı, düzenleme, araştırma ve çeviri rollerinden oluşan bir içerik hattı."
+      },
+      "researchAnalysis": {
+        "name": "Araştırma ve Analiz Takımı",
+        "desc": "Veri analizi, literatür taraması, rapor yazımı ve önceliklendirme rollerinden oluşan bir analiz akışı."
+      }
+    },
+    "role": {
+      "architect": {
+        "name": "Mimar",
+        "desc": "Sistem mimarisini planlar, API tasarlar ve üst düzey yapı kararları verir."
+      },
+      "coder": {
+        "name": "Kodlayıcı",
+        "desc": "Uygulama kodunu yazar, sorunları ayıklar ve teknik borcu ele alır."
+      },
+      "reviewer": {
+        "name": "İnceleyici",
+        "desc": "Kodu kalite, güvenlik ve iyi uygulamalar açısından inceler."
+      },
+      "summarizer": {
+        "name": "Özetleyici",
+        "desc": "Uzun belgeleri, konuşmaları ve kod tabanlarını kısa özetlere indirger."
+      },
+      "copywriter": {
+        "name": "Metin yazarı",
+        "desc": "Farklı okuyucular için düzenli ve ilgi çekici metinler yazar."
+      },
+      "editor": {
+        "name": "Editör",
+        "desc": "Metni düzeltir, netliği ve üslubu iyileştirir."
+      },
+      "researcher": {
+        "name": "Araştırmacı",
+        "desc": "Birden çok kaynaktan bilgi bulur ve bir araya getirir."
+      },
+      "translator": {
+        "name": "Çevirmen",
+        "desc": "Anlamı ve üslubu koruyarak diller arasında çeviri yapar."
+      },
+      "dataAnalyst": {
+        "name": "Veri analisti",
+        "desc": "Veri kümelerini inceler, örüntüleri ve içgörüleri bulur."
+      },
+      "literatureReviewer": {
+        "name": "Literatür tarayıcısı",
+        "desc": "Akademik makaleleri ve teknik belgeleri inceler."
+      },
+      "reportWriter": {
+        "name": "Rapor yazarı",
+        "desc": "Açık ve düzenli analiz raporları üretir."
+      },
+      "triage": {
+        "name": "Önceliklendirme",
+        "desc": "Gelen istekleri veya sorunları hızla sınıflandırır, önceliklendirir ve yönlendirir."
+      }
+    },
+    "copySuffix": "{{name}} (Kopya)",
+    "notAssigned": "Atanmadı",
+    "teamIconOption": {
+      "code": "Kod",
+      "edit": "Düzenle",
+      "analysis": "Analiz",
+      "custom": "Özel"
+    },
+    "roleIconOption": {
+      "block": "Blok",
+      "codeBrackets": "Kod",
+      "previewOpen": "İnceleme",
+      "docSearch": "Belge",
+      "write": "Yaz",
+      "checkCorrect": "Kontrol",
+      "search": "Ara",
+      "translate": "Çevir",
+      "chartLine": "Grafik",
+      "bookOpen": "Kitap",
+      "fileWord": "Dosya",
+      "filter": "Süzgeç",
+      "edit": "Düzenle"
+    },
+    "capability": {
+      "text": "Metin üretimi",
+      "reasoning": "Akıl yürütme",
+      "functionCalling": "Araç çağırma",
+      "vision": "Görüntü",
+      "creative": "Yaratıcı",
+      "precise": "Kesin",
+      "fast": "Hızlı",
+      "cheap": "Düşük maliyet",
+      "webSearch": "Web araması"
+    }
   }
 }
