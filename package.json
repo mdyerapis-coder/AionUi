@@ -1,6 +1,6 @@
 {
   "name": "AionUi",
-  "version": "2.1.55",
+  "version": "2.2.2",
   "description": "Transform your command-line AI agent into a modern, efficient AI Chat interface.",
   "keywords": [],
   "license": "Apache-2.0",
@@ -123,6 +123,7 @@
     "https-proxy-agent": "^7.0.6",
     "i18next": "^23.7.16",
     "js-yaml": "^4.1.0",
+    "json5": "^2.2.3",
     "jsonrepair": "^3.13.0",
     "jsonwebtoken": "^9.0.2",
     "katex": "^0.16.22",
@@ -142,6 +143,7 @@
     "react-virtuoso": "^4.18.1",
     "rehype-katex": "^7.0.1",
     "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
@@ -153,6 +155,7 @@
     "strip-json-comments": "^3.1.1",
     "swr": "^2.3.6",
     "tiny-csrf": "^1.1.6",
+    "wavedrom": "^3.6.2",
     "web-tree-sitter": "^0.25.10",
     "ws": "^8.18.3",
     "yauzl": "^3.2.1",
@@ -238,7 +241,7 @@
   "engines": {
     "node": ">=22 <25"
   },
-  "aioncoreVersion": "v0.1.66",
+  "aioncoreVersion": "v0.2.2",
   "electronRebuild": {
     "electronVersion": "^37.3.1"
   },
