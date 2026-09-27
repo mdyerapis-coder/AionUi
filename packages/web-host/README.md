@@ -1,37 +1,9 @@
 # @aionui/web-host
 
-WebUI host package for AionUi - zero Electron dependency.
+Zero-Electron library that starts the WebUI host. Entry: `src/index.ts` (`startWebHost`).
 
-## Responsibilities
+- `backend-launcher.ts` — spawn and monitor the external `aioncore` binary (`BackendLifecycleManager`, `startBackend` / `stopBackend`).
+- `static-server.ts` — serve the renderer SPA and reverse-proxy `/api`, `/login`, `/logout`, and WebSocket upgrades to aioncore. Auth is the backend's `aionui-auth` crate; this package does not store passwords or sessions.
+- `agent-process-registry.ts` — registry file path and cleanup of registered agent processes.
 
-- **backend-launcher**: spawn or reuse existing aioncore process
-- **static-server**: serve out/renderer SPA + reverse proxy /api and /ws to backend
-- **auth**: password reset, change, verify, config I/O (bcrypt + session)
-
-## Usage
-
-```ts
-import { startWebHost } from '@aionui/web-host';
-
-const handle = await startWebHost({
-  app: {
-    version: '1.0.0',
-    isPackaged: false,
-    resourcesPath: '/path/to/resources',
-    userDataPath: '/path/to/userData',
-  },
-  staticDir: '/path/to/out/renderer',
-  backend: {
-    kind: 'ownBackend',
-    resolveBackend: () => '/path/to/aioncore',
-  },
-});
-
-console.log(`WebUI running at ${handle.url}`);
-
-await handle.stop();
-```
-
-## Status
-
-M3: skeleton + type definitions + placeholder implementations (all throw `not implemented yet`)
+Desktop `--webui` calls `startWebHost` from `packages/desktop/src/index.ts` with `backend.kind: 'useExistingBackend'`. Options: `src/types.ts`.

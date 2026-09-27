@@ -1063,11 +1063,6 @@ export class BackendLifecycleManager {
   }
 }
 
-/**
- * Functional wrapper for ownBackend usage in startWebHost (M5 will consume).
- * Not used by desktop IPC path in M4 (desktop instantiates BackendLifecycleManager
- * directly to preserve current stop/port getter semantics).
- */
 export async function startBackend(opts: BackendLaunchOptions): Promise<BackendHandle> {
   const manager = new BackendLifecycleManager(opts.app, opts.resolveBackend);
   const dataDir = opts.dataDir ?? '';

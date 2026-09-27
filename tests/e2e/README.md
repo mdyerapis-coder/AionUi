@@ -93,12 +93,12 @@ tests/e2e/
 │   ├── assistantSettings.ts # Assistant CRUD helpers
 │   ├── teamConfig.ts   # TEAM_SUPPORTED_BACKENDS whitelist
 │   └── screenshots.ts  # Manual screenshot helper
+├── cases/
+│   └── teams/          # team-create.e2e.ts, team-agent-lifecycle.e2e.ts, … (`bun run test:e2e:team*`)
 ├── specs/
-│   ├── README.md       # Team E2E spec (rules for team tests)
+│   ├── README.md
 │   ├── app-launch.e2e.ts
-│   ├── team-create.e2e.ts
-│   ├── team-workspace-migration.e2e.ts
-│   └── ...             # ~30+ test files
+│   └── hub-backend-install.e2e.ts
 ├── results/            # Test artifacts (gitignored)
 ├── report/             # HTML report (gitignored)
 └── screenshots/        # Manual screenshots (gitignored)

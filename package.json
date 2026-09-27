@@ -47,7 +47,6 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run tests/integration",
-    "bench": "vitest bench",
     "bench:report": "bunx tsx scripts/run-benchmarks.ts",
     "bench:startup": "bunx tsx scripts/benchmark-startup.ts",
     "bench:full": "bunx tsx scripts/run-benchmarks.ts --startup",

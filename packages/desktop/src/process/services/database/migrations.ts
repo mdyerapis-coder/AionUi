@@ -37,8 +37,7 @@ const migration_v1: IMigration = {
 };
 
 /**
- * Migration v1 -> v2: Add indexes for better performance
- * Example of a schema change migration
+ * Migration v1 -> v2: Add indexes for better performance (applied, not a sample)
  */
 const migration_v2: IMigration = {
   version: 2,

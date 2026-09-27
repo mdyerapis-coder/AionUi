@@ -38,7 +38,7 @@ packages/desktop/src/renderer/
 - **Complex/reusable styles**: CSS Modules (`ComponentName.module.css`). No plain `.css` for components
 - **Semantic color tokens only**: Use `uno.config.ts` tokens (`text-t-primary`, `bg-base`, `border-b-base`) or CSS variables. No hardcoded colors. Exception: `CssThemeSettings/presets/`
 - **No inline styles** except dynamically computed values
-- **Arco overrides**: In component's CSS Module via `:global(.arco-xxx)`. No global override files
+- **Arco overrides**: global theme overrides in `packages/desktop/src/renderer/styles/arco-override.css`; component-scoped overrides in a CSS Module with `:global()`. See `docs/theming/tokens.md`.
 - **Global styles**: Only in `packages/desktop/src/renderer/styles/`
 
 ## `components/` — Layered Structure
@@ -123,11 +123,11 @@ Only create sub-directories you need. Use these exact names.
 
 ## Page-Level Directory Naming
 
-| Type                            | Convention | Examples                                                                    |
-| ------------------------------- | ---------- | --------------------------------------------------------------------------- |
-| **Categorical** (standard role) | lowercase  | `components/`, `hooks/`, `context/`, `utils/`                               |
-| **Feature module** (business)   | PascalCase | `GroupedHistory/`, `Workspace/`, `Preview/`                                 |
-| **Platform directory**          | lowercase  | `acp/`, `codex/`, `gemini/` (mirrors `packages/desktop/src/process/agent/`) |
+| Type                            | Convention | Examples                                      |
+| ------------------------------- | ---------- | --------------------------------------------- |
+| **Categorical** (standard role) | lowercase  | `components/`, `hooks/`, `context/`, `utils/` |
+| **Feature module** (business)   | PascalCase | `GroupedHistory/`, `Workspace/`, `Preview/`   |
+| **Platform directory**          | lowercase  | `platforms/acp/`, `platforms/gemini/`         |
 
 ### Example
 
@@ -143,7 +143,7 @@ packages/desktop/src/renderer/
 │   └── conversation/        # top-level page → lowercase
 │       ├── GroupedHistory/  # feature module → PascalCase
 │       ├── Workspace/       # feature module → PascalCase
-│       ├── acp/             # platform dir → lowercase
+│       ├── platforms/       # platform dirs → lowercase (`acp/`, `gemini/`)
 │       └── components/      # categorical → lowercase
 └── hooks/                   # categorical → lowercase
 ```

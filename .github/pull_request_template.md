@@ -34,7 +34,7 @@
 - [ ] `bun run lint` — no lint errors (skip if no `.ts`/`.tsx` changed)
 - [ ] `bunx tsc --noEmit` — no type errors (skip if no `.ts`/`.tsx` changed)
 - [ ] `bunx vitest run` — tests pass
-- [ ] i18n validated (`bun run i18n:types` + `node scripts/check-i18n.js`) — only if `src/renderer/`, `locales/`, or `src/common/config/i18n/` changed; N/A otherwise
+- [ ] i18n validated (`bun run i18n:types` + `node scripts/check-i18n.js`) — only if `packages/desktop/src/renderer/`, `packages/desktop/src/common/i18n/locales/`, or `packages/desktop/src/common/config/i18n-config.json` changed; N/A otherwise
 - [ ] New/changed user-facing text uses i18n keys (no hardcoded strings)
 
 ## Runtime Verification

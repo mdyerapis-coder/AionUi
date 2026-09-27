@@ -7,28 +7,30 @@
 - **Workspace root stays minimal**: root keeps shared config, scripts, tests, docs, assets, and package manager files.
 - **Desktop app source lives under `packages/desktop/`**: do not add new app runtime code back to the root.
 - **README translations** → `docs/readme/`, not root. Only main `readme.md` stays at root.
-- **Guide documents** (`*_GUIDE.md`, `CODE_STYLE.md`) → `docs/`
+- **Guide documents** → `docs/guides/` and `docs/contributing/`
+- **Startup map** → `map/` (there is no `docs/architecture/` or `docs/specs/`)
 - **Build artifacts** (`out/`, `node_modules/`) are gitignored
 
-### Current Root Structure (M1)
+### Current Root Structure
 
 ```
 project-root/
-├── packages/
-│   └── desktop/            # Electron desktop workspace
-├── tests/                  # Shared test suites
-├── docs/                   # All documentation
-├── scripts/                # Build and tooling scripts
-├── resources/              # Static resources (icons, images, installers)
-├── public/                 # Shared Vite public assets
-├── patches/                # npm/bun patches
-├── homebrew/               # Homebrew formula
-├── package.json            # Workspace root config
-├── tsconfig.json           # Shared TS config
-├── vitest.config.ts        # Shared test config
-├── AGENTS.md               # Agent conventions
-├── CLAUDE.md               # Claude-specific config
-└── ...                     # Other root-level tooling config
+├── packages/               # desktop, web-host, web-cli, shared-scripts
+├── tests/                  # unit, integration, e2e
+├── docs/
+├── map/                    # object/process map
+├── scripts/
+├── resources/
+├── public/
+├── patches/
+├── homebrew/
+├── mobile/
+├── examples/
+├── package.json
+├── tsconfig.json
+├── vitest.config.ts
+├── AGENTS.md
+└── CLAUDE.md               # @AGENTS.md
 ```
 
 > **Migration rule**: New desktop runtime modules go under `packages/desktop/`, not the repository root.
@@ -37,39 +39,19 @@ project-root/
 
 ## `packages/desktop/` Layout
 
-### Workspace Structure
-
 ```
 packages/desktop/
 ├── src/
-│   ├── renderer/          # Renderer layer — React UI, no Node.js APIs
-│   ├── process/           # Main process layer — Node.js / Electron business logic
+│   ├── renderer/          # React UI, no Node.js APIs
+│   ├── process/           # Electron main process — see references/process.md
 │   ├── common/            # Shared cross-process code
-│   ├── preload/           # IPC bridge entrypoints
+│   ├── preload/           # IPC preload scripts
 │   ├── index.ts           # Main process entry
-│   └── types.d.ts         # Ambient declarations
+│   ├── sentry.ts
+│   └── types.d.ts
 ├── electron.vite.config.ts
 ├── electron-builder.yml
 └── package.json
-```
-
-### `packages/desktop/src/` Structure
-
-```
-packages/desktop/src/
-├── renderer/              # React UI, browser-only code
-├── process/               # Electron main-process and worker code
-│   ├── bridge/            # IPC handlers
-│   ├── services/          # Business logic
-│   ├── agent/             # AI platform connections
-│   ├── channels/          # Multi-channel messaging
-│   ├── extensions/        # Plugin system
-│   ├── webserver/         # WebUI server
-│   └── worker/            # Background workers
-├── common/                # Shared types, adapters, utilities
-├── preload/               # contextBridge / ipcRenderer exposure
-├── index.ts               # Main process entry point
-└── types.d.ts             # Ambient declarations
 ```
 
 ### Placement Rules

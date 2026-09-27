@@ -22,7 +22,7 @@ WebUI mode starts AionUi with an embedded web server, allowing you to:
 - Use AionUi from remote devices on the same network (with `--remote` flag)
 - Run the application headless on servers
 
-Default access URL: `http://localhost:3000` (port may vary, check the application output)
+Default access URL: `http://localhost:25808` (production default in `packages/desktop/src/common/config/constants.ts`; dev is 25809). Override with `--port` or `AIONUI_PORT`.
 
 ---
 
@@ -467,7 +467,7 @@ ip addr show
 
 Look for `inet` address (e.g., `192.168.1.100`).
 
-Access from other devices: `http://YOUR_IP_ADDRESS:3000`
+Access from other devices: `http://YOUR_IP_ADDRESS:25808`
 
 ---
 
@@ -475,7 +475,7 @@ Access from other devices: `http://YOUR_IP_ADDRESS:3000`
 
 ### Port Already in Use
 
-If port 3000 is already in use, the application will automatically try the next available port. Check the console output for the actual port number.
+If port 25808 is already in use, startup fails on that bind. Pick another port with `--port` or `AIONUI_PORT` and check the console for the listen error.
 
 ### Cannot Access from Browser
 
@@ -494,13 +494,13 @@ If port 3000 is already in use, the application will automatically try the next 
 
 ```cmd
 # Allow through Windows Firewall
-netsh advfirewall firewall add rule name="AionUi WebUI" dir=in action=allow protocol=TCP localport=3000
+netsh advfirewall firewall add rule name="AionUi WebUI" dir=in action=allow protocol=TCP localport=25808
 ```
 
 **Linux (UFW):**
 
 ```bash
-sudo ufw allow 3000/tcp
+sudo ufw allow 25808/tcp
 ```
 
 **macOS:**
@@ -675,9 +675,9 @@ npm run resetpass -- username
 
 ## Additional Resources
 
-- [Main README](../readme.md)
-- [中文说明](./readme/readme_ch.md)
-- [日本語ドキュメント](./readme/readme_jp.md)
+- [Main README](../../readme.md)
+- [中文说明](../readme/readme_ch.md)
+- [日本語ドキュメント](../readme/readme_jp.md)
 - [GitHub Issues](https://github.com/iOfficeAI/AionUi/issues)
 
 ---
