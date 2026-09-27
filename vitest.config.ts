@@ -5,8 +5,6 @@ const aliases = {
   '@/': path.resolve(__dirname, './packages/desktop/src') + '/',
   '@process/': path.resolve(__dirname, './packages/desktop/src/process') + '/',
   '@renderer/': path.resolve(__dirname, './packages/desktop/src/renderer') + '/',
-  '@worker/': path.resolve(__dirname, './packages/desktop/src/process/worker') + '/',
-  '@mcp/models/': path.resolve(__dirname, './packages/desktop/src/common/models') + '/',
   '@mcp/types/': path.resolve(__dirname, './packages/desktop/src/common') + '/',
   '@mcp/': path.resolve(__dirname, './packages/desktop/src/common') + '/',
 };
@@ -33,7 +31,6 @@ export default defineConfig({
             'tests/unit/**/*.test.ts',
             'tests/unit/**/test_*.ts',
             'tests/integration/**/*.test.ts',
-            'tests/regression/**/*.test.ts',
           ],
           exclude: ['tests/unit/**/*.dom.test.ts', 'tests/unit/**/*.dom.test.tsx'],
           setupFiles: ['./tests/vitest.setup.ts'],
@@ -68,10 +65,6 @@ export default defineConfig({
 
         // Electron entry points (require Electron runtime)
         'packages/desktop/src/index.ts',
-        'packages/desktop/src/preload.ts',
-
-        // Shims / polyfills
-        'packages/desktop/src/common/utils/shims/**',
 
         // Pure type / constant files
         'packages/desktop/src/common/types/**',

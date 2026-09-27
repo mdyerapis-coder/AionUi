@@ -26,8 +26,6 @@ files:
   - package.json
   # Native modules and their runtime dependencies
   - node_modules/better-sqlite3/**/*
-  - node_modules/bcrypt/**/*
-  - node_modules/node-pty/**/*
   - node_modules/@mapbox/**/*
   - node_modules/detect-libc/**/*
   - node_modules/prebuild-install/**/*
@@ -88,8 +86,6 @@ files:
   - '!**/node_modules/@*/*/vendor/**'
   # Re-include vendor dirs for native modules that need them (if any)
   - 'node_modules/better-sqlite3/vendor/**'
-  - 'node_modules/bcrypt/vendor/**'
-  - 'node_modules/node-pty/vendor/**'
   # Exclude vite source maps
   - '!**/*.map'
   # Exclude syntax highlighter languages (keep common ones)
@@ -187,8 +183,6 @@ nodeGypRebuild: false
 
 asarUnpack:
   - '**/node_modules/better-sqlite3/**/*'
-  - '**/node_modules/bcrypt/**/*'
-  - '**/node_modules/node-pty/**/*'
   - '**/node_modules/@mapbox/**/*'
   - '**/node_modules/detect-libc/**/*'
   - '**/node_modules/prebuild-install/**/*'

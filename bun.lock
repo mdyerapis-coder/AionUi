@@ -188,7 +188,6 @@
         "aionui-web": "./bin/aionui-web.js",
       },
       "dependencies": {
-        "@aionui/shared-scripts": "workspace:*",
         "@aionui/web-host": "workspace:*",
       },
       "devDependencies": {

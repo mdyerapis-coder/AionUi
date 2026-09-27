@@ -237,57 +237,6 @@ function runStartupBenchmark(reportDir: string): StartupBenchReport | undefined 
   }
 }
 
-// ── Run DB bench (bun test) ────────────────────────────────────────────────
-
-function runDbBench(): BenchResult[] {
-  console.log('\n  Running DB large-dataset benchmark (bun:sqlite)...\n');
-
-  const resultFile = path.resolve('scripts/benchmark-results/db-bench-latest.json');
-  if (fs.existsSync(resultFile)) fs.rmSync(resultFile);
-
-  try {
-    spawnSync('bun', ['test', './tests/bench/database.bench.bun.ts'], {
-      cwd: process.cwd(),
-      encoding: 'utf-8',
-      timeout: 120_000,
-      stdio: 'inherit',
-    });
-  } catch {
-    console.warn('  DB bench failed to run.');
-  }
-
-  if (!fs.existsSync(resultFile)) {
-    console.warn('  DB bench did not produce results.');
-    return [];
-  }
-
-  try {
-    const raw = JSON.parse(fs.readFileSync(resultFile, 'utf-8')) as Array<{
-      name: string;
-      suite: string;
-      ops: number;
-      meanMs: number;
-      minMs: number;
-      maxMs: number;
-    }>;
-    return raw.map((r) => ({
-      name: r.name,
-      suite: r.suite,
-      hz: r.ops,
-      mean: r.meanMs,
-      min: r.minMs,
-      max: r.maxMs,
-      p75: 0,
-      p99: 0,
-      samples: 100,
-      rme: '-',
-    }));
-  } catch {
-    console.warn('  Failed to parse DB bench results.');
-    return [];
-  }
-}
-
 // ── Bundle size check ──────────────────────────────────────────────────────
 
 function checkBundleSize(): BundleSizeReport | undefined {
@@ -690,16 +639,13 @@ function main() {
     fs.mkdirSync(reportDir, { recursive: true });
   }
 
-  const dbResults = runDbBench();
-  const allResults = [...results, ...dbResults];
-
   const startupReport = startup ? runStartupBenchmark(reportDir) : undefined;
   const bundleSize = checkBundleSize();
 
   const report: BenchReport = {
     timestamp: new Date().toISOString(),
     gitRef,
-    results: allResults,
+    results,
     startup: startupReport,
     bundleSize: bundleSize,
   };

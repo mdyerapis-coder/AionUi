@@ -174,8 +174,6 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 
 | Command                            | Description                                                 |
 | ---------------------------------- | ----------------------------------------------------------- |
-| `bun run build:renderer:web`       | Build renderer for standalone web deployment                |
-| `bun run build:server`             | Build standalone server bundle to `dist-server/`            |
 | `bun run server:start`             | Run standalone server in development mode                   |
 | `bun run server:start:remote`      | Run standalone server with remote access                    |
 | `bun run server:start:prod`        | Run standalone server in production mode                    |
@@ -195,28 +193,20 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 
 ### Testing
 
-| Command                      | Description                                       |
-| ---------------------------- | ------------------------------------------------- |
-| `bun run test`               | Run all unit tests (vitest)                       |
-| `bun run test:watch`         | Run tests in watch mode                           |
-| `bun run test:coverage`      | Run tests with coverage report                    |
-| `bun run test:contract`      | Run contract tests                                |
-| `bun run test:integration`   | Run integration tests                             |
-| `bun run test:bun`           | Run Bun-specific database driver tests            |
-| `bun run test:e2e`           | Run end-to-end tests (Playwright)                 |
-| `bun run test:packaged:i18n` | Run i18n integration tests against packaged build |
-| `bun run test:packaged:bun`  | Run Bun packaged integration tests                |
+| Command                     | Description                        |
+| --------------------------- | ---------------------------------- |
+| `bun run test`              | Run all unit tests (vitest)        |
+| `bun run test:watch`        | Run tests in watch mode            |
+| `bun run test:coverage`     | Run tests with coverage report     |
+| `bun run test:integration`  | Run integration tests              |
+| `bun run test:e2e`          | Run end-to-end tests (Playwright)  |
+| `bun run test:packaged:bun` | Run Bun packaged integration tests |
 
 ### Debug
 
-| Command                      | Description                                     |
-| ---------------------------- | ----------------------------------------------- |
-| `bun run debug:perf`         | Start app with performance monitoring enabled   |
-| `bun run debug:perf:report`  | Generate performance report from collected data |
-| `bun run debug:mcp`          | Debug MCP server connections                    |
-| `bun run debug:mcp:list`     | List configured MCP servers                     |
-| `bun run debug:mcp:validate` | Validate MCP server configurations              |
-| `bun run debug:custom-agent` | Debug custom agent connections                  |
+| Command              | Description                                   |
+| -------------------- | --------------------------------------------- |
+| `bun run debug:perf` | Start app with performance monitoring enabled |
 
 ## Multi-Instance Development
 

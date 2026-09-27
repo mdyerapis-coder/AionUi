@@ -107,7 +107,6 @@ module.exports = async function afterPack(context) {
   const nodeModulesDir = path.join(resourcesDir, 'app.asar.unpacked', 'node_modules');
 
   // Modules that need to be rebuilt for cross-compilation
-  // Use platform-specific module list (Windows skips node-pty due to cross-compilation issues)
   const modulesToRebuild = getModulesToRebuild(electronPlatformName);
   console.log(`   Modules to rebuild: ${modulesToRebuild.join(', ')}`);
 
