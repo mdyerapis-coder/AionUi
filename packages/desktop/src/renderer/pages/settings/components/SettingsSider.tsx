@@ -62,7 +62,7 @@ const GROUP_HEADER_BEFORE: Record<string, string> = {
   about: 'settings.groupAbout',
 };
 
-type SiderItem = {
+export type SettingsNavItem = {
   id: string;
   label: string;
   icon: React.ReactElement;
@@ -70,6 +70,146 @@ type SiderItem = {
   /** Route path segment — for builtins: `/settings/{path}`, for extensions: `/settings/ext/{id}` */
   path: string;
 };
+
+type TranslateFn = (key: string, options?: { defaultValue?: string }) => string;
+
+const navIcon = (
+  Icon: React.ComponentType<{ theme?: string; size?: string | number; strokeWidth?: number }>
+): React.ReactElement => <Icon theme='outline' size='16' strokeWidth={3} />;
+
+export type SettingsNavList = {
+  items: SettingsNavItem[];
+  /**
+   * How many extension tabs were spliced immediately before each builtin anchor.
+   * The sider uses this to place a group header above those leading tabs.
+   */
+  leadingExtensionCount: ReadonlyMap<string, number>;
+};
+
+/**
+ * Ordered settings navigation shared by the desktop sider and the mobile top nav.
+ * `pet` is desktop-only. Off desktop, the WebUI item uses the remote-session icon.
+ * Extension tabs are spliced at their anchors; unknown anchors land before System.
+ */
+export function buildSettingsNavItems(
+  isDesktop: boolean,
+  t: TranslateFn,
+  extensionTabs: readonly IExtensionSettingsTab[],
+  resolveExtTabName: (tab: IExtensionSettingsTab) => string
+): SettingsNavList {
+  const builtinMap: Record<string, SettingsNavItem> = {
+    model: { id: 'model', label: t('settings.model'), icon: navIcon(LinkCloud), path: 'model' },
+    resourceTracker: {
+      id: 'resourceTracker',
+      label: t('settings.resourceTracker'),
+      icon: navIcon(ChartLine),
+      path: 'resourceTracker',
+    },
+    teamModels: {
+      id: 'teamModels',
+      label: t('settings.teamModels', { defaultValue: 'Team Models' }),
+      icon: navIcon(People),
+      path: 'teamModels',
+    },
+    agent: {
+      id: 'agent',
+      label: t('settings.agents', { defaultValue: 'Agents' }),
+      icon: navIcon(Speed),
+      path: 'agent',
+    },
+    skills: {
+      id: 'skills',
+      label: t('settings.skills', { defaultValue: 'Skills' }),
+      icon: navIcon(Lightning),
+      path: 'skills',
+    },
+    tools: {
+      id: 'tools',
+      label: t('settings.tools', { defaultValue: 'Tools' }),
+      icon: navIcon(Toolkit),
+      path: 'tools',
+    },
+    appearance: {
+      id: 'appearance',
+      label: t('settings.appearancePanel'),
+      icon: navIcon(Computer),
+      path: 'appearance',
+    },
+    webui: {
+      id: 'webui',
+      label: t('settings.webui'),
+      icon: navIcon(isDesktop ? Earth : Communication),
+      path: 'webui',
+    },
+    pet: { id: 'pet', label: t('pet.desktopPet'), icon: navIcon(Cat), path: 'pet' },
+    system: { id: 'system', label: t('settings.system'), icon: navIcon(System), path: 'system' },
+    about: { id: 'about', label: t('settings.about'), icon: navIcon(Info), path: 'about' },
+  };
+
+  const items: SettingsNavItem[] = BUILTIN_TAB_IDS.filter((id) => isDesktop || id !== 'pet').map(
+    (id) => builtinMap[id]
+  );
+
+  const beforeMap = new Map<string, IExtensionSettingsTab[]>();
+  const afterMap = new Map<string, IExtensionSettingsTab[]>();
+  const unanchored: IExtensionSettingsTab[] = [];
+
+  for (const tab of extensionTabs) {
+    if (!tab.position) {
+      unanchored.push(tab);
+      continue;
+    }
+    const { relativeTo: rawAnchor, placement } = tab.position;
+    const anchor = LEGACY_ANCHOR_REMAP[rawAnchor] ?? rawAnchor;
+    if (!items.some((item) => item.id === anchor)) {
+      unanchored.push(tab);
+      continue;
+    }
+    const map = placement === 'before' ? beforeMap : afterMap;
+    let list = map.get(anchor);
+    if (!list) {
+      list = [];
+      map.set(anchor, list);
+    }
+    list.push(tab);
+  }
+
+  const toNavItem = (tab: IExtensionSettingsTab): SettingsNavItem => {
+    const resolvedIcon = resolveExtensionAssetUrl(tab.icon) || tab.icon;
+    return {
+      id: tab.id,
+      label: resolveExtTabName(tab),
+      icon: resolvedIcon ? <img src={resolvedIcon} alt='' className='w-full h-full object-contain' /> : navIcon(Puzzle),
+      isImageIcon: Boolean(resolvedIcon),
+      path: `ext/${tab.id}`,
+    };
+  };
+
+  for (let i = items.length - 1; i >= 0; i--) {
+    const builtinId = items[i].id;
+    const afters = afterMap.get(builtinId);
+    if (afters) {
+      items.splice(i + 1, 0, ...afters.map(toNavItem));
+    }
+    const befores = beforeMap.get(builtinId);
+    if (befores) {
+      items.splice(i, 0, ...befores.map(toNavItem));
+    }
+  }
+
+  if (unanchored.length > 0) {
+    const systemIdx = items.findIndex((item) => item.id === 'system');
+    const insertIdx = systemIdx >= 0 ? systemIdx : items.length;
+    items.splice(insertIdx, 0, ...unanchored.map(toNavItem));
+  }
+
+  const leadingExtensionCount = new Map<string, number>();
+  for (const [anchor, tabs] of beforeMap) {
+    leadingExtensionCount.set(anchor, tabs.length);
+  }
+
+  return { items, leadingExtensionCount };
+}
 
 const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }> = ({
   collapsed = false,
@@ -84,126 +224,21 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
   const { resolveExtTabName } = useExtI18n();
 
   const { menus, groupHeaderAt } = useMemo(() => {
-    // Build builtin items
-    const builtinMap: Record<string, SiderItem> = {
-      model: { id: 'model', label: t('settings.model'), icon: <LinkCloud />, path: 'model' },
-      resourceTracker: {
-        id: 'resourceTracker',
-        label: t('settings.resourceTracker'),
-        icon: <ChartLine />,
-        path: 'resourceTracker',
-      },
-      teamModels: {
-        id: 'teamModels',
-        label: t('settings.teamModels', { defaultValue: 'Team Models' }),
-        icon: <People />,
-        path: 'teamModels',
-      },
-      agent: {
-        id: 'agent',
-        label: t('settings.agents', { defaultValue: 'Agents' }),
-        icon: <Speed />,
-        path: 'agent',
-      },
-      skills: {
-        id: 'skills',
-        label: t('settings.skills', { defaultValue: 'Skills' }),
-        icon: <Lightning />,
-        path: 'skills',
-      },
-      tools: {
-        id: 'tools',
-        label: t('settings.tools', { defaultValue: 'Tools' }),
-        icon: <Toolkit />,
-        path: 'tools',
-      },
-      appearance: { id: 'appearance', label: t('settings.appearancePanel'), icon: <Computer />, path: 'appearance' },
-      webui: {
-        id: 'webui',
-        label: t('settings.webui'),
-        icon: isDesktop ? <Earth /> : <Communication />,
-        path: 'webui',
-      },
-      pet: { id: 'pet', label: t('pet.desktopPet'), icon: <Cat />, path: 'pet' },
-      system: { id: 'system', label: t('settings.system'), icon: <System />, path: 'system' },
-      about: { id: 'about', label: t('settings.about'), icon: <Info />, path: 'about' },
-    };
+    const { items, leadingExtensionCount } = buildSettingsNavItems(isDesktop, t, extensionTabs, resolveExtTabName);
 
-    // Start with ordered builtin IDs, hiding desktop-only tabs in browser mode
-    const result: SiderItem[] = BUILTIN_TAB_IDS.filter((id) => isDesktop || id !== 'pet').map((id) => builtinMap[id]);
-
-    // Extension tabs with position anchoring
-    const beforeMap = new Map<string, IExtensionSettingsTab[]>();
-    const afterMap = new Map<string, IExtensionSettingsTab[]>();
-    const unanchored: IExtensionSettingsTab[] = [];
-
-    for (const tab of extensionTabs) {
-      if (!tab.position) {
-        unanchored.push(tab);
-        continue;
-      }
-      const { relativeTo: rawAnchor, placement } = tab.position;
-      const anchor = LEGACY_ANCHOR_REMAP[rawAnchor] ?? rawAnchor;
-      if (!result.some((item) => item.id === anchor)) {
-        unanchored.push(tab);
-        continue;
-      }
-      const map = placement === 'before' ? beforeMap : afterMap;
-      let list = map.get(anchor);
-      if (!list) {
-        list = [];
-        map.set(anchor, list);
-      }
-      list.push(tab);
-    }
-
-    // Helper to create SiderItem from extension tab
-    const toSiderItem = (tab: IExtensionSettingsTab): SiderItem => {
-      const resolvedIcon = resolveExtensionAssetUrl(tab.icon) || tab.icon;
-      return {
-        id: tab.id,
-        label: resolveExtTabName(tab),
-        icon: resolvedIcon ? <img src={resolvedIcon} alt='' className='w-full h-full object-contain' /> : <Puzzle />,
-        isImageIcon: Boolean(resolvedIcon),
-        path: `ext/${tab.id}`,
-      };
-    };
-
-    // Insert anchored tabs (reverse iteration to preserve indices)
-    for (let i = result.length - 1; i >= 0; i--) {
-      const builtinId = result[i].id;
-      const afters = afterMap.get(builtinId);
-      if (afters) {
-        result.splice(i + 1, 0, ...afters.map(toSiderItem));
-      }
-      const befores = beforeMap.get(builtinId);
-      if (befores) {
-        result.splice(i, 0, ...befores.map(toSiderItem));
-      }
-    }
-
-    // Append unanchored before "system"
-    if (unanchored.length > 0) {
-      const systemIdx = result.findIndex((item) => item.id === 'system');
-      const insertIdx = systemIdx >= 0 ? systemIdx : result.length;
-      result.splice(insertIdx, 0, ...unanchored.map(toSiderItem));
-    }
-
-    // Compute group header render positions.
-    //
     // A header must appear before the first *visible* item of its group, which may
     // be an extension tab anchored with placement='before' to the group's first
     // builtin — not the builtin itself. Otherwise such an extension would render
     // above the header and visually belong to the previous group.
     const headerAt = new Map<number, string>();
     for (const [builtinId, headerKey] of Object.entries(GROUP_HEADER_BEFORE)) {
-      const builtinIdx = result.findIndex((item) => item.id === builtinId);
+      const builtinIdx = items.findIndex((item) => item.id === builtinId);
       if (builtinIdx < 0) continue;
-      const beforeCount = beforeMap.get(builtinId)?.length ?? 0;
+      const beforeCount = leadingExtensionCount.get(builtinId) ?? 0;
       headerAt.set(builtinIdx - beforeCount, headerKey);
     }
 
-    return { menus: result, groupHeaderAt: headerAt };
+    return { menus: items, groupHeaderAt: headerAt };
   }, [t, isDesktop, extensionTabs, resolveExtTabName]);
 
   const siderTooltipProps = getSiderTooltipProps(tooltipEnabled);
