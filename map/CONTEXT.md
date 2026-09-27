@@ -2,7 +2,7 @@
 
 ## Universes
 
-All catalogued nouns are **live**. This is a fork of a large, actively-maintained upstream OSS project — most of the tree (UI components, mobile app, extension examples) is out of scope for this map, not "ghost."
+All catalogued nouns are **live**. This is a fork of a large, actively-maintained upstream OSS project — most of the tree (UI components, extension examples) is out of scope for this map, not "ghost."
 
 ## The aioncore boundary — read this before touching backend startup
 

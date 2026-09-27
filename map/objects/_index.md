@@ -26,4 +26,4 @@
 
 ## Not mapped (explicitly out of scope)
 
-`packages/desktop/src/renderer/` (UI), `mobile/` (React Native app), `examples/*` (extension SDK samples), `packages/shared-scripts/` (build-time only)
+`packages/desktop/src/renderer/` (UI), `examples/*` (extension SDK samples), `packages/shared-scripts/` (build-time only)
