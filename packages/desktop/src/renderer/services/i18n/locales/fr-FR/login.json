@@ -21,6 +21,7 @@
     "tooManyAttempts": "Trop de tentatives, veuillez réessayer plus tard",
     "networkError": "Connexion échouée, veuillez réessayer",
     "serverError": "Erreur serveur, veuillez réessayer plus tard",
+    "csrfError": "Le jeton de sécurité a expiré. Veuillez réessayer.",
     "unknown": "Échec de connexion, veuillez réessayer"
   }
 }

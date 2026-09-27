@@ -21,6 +21,7 @@
     "tooManyAttempts": "登入嘗試過多，請稍後再試",
     "networkError": "連線失敗，請稍後再試",
     "serverError": "伺服器發生錯誤，請稍後再試",
+    "csrfError": "安全權杖已過期，請再試一次",
     "unknown": "登入失敗，請稍後再試"
   }
 }

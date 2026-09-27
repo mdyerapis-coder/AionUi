@@ -21,6 +21,7 @@
     "tooManyAttempts": "Muitas tentativas, por favor tente novamente mais tarde",
     "networkError": "Falha na conexão, por favor tente novamente",
     "serverError": "Erro no servidor, por favor tente novamente mais tarde",
+    "csrfError": "O token de segurança expirou. Tente novamente.",
     "unknown": "O login falhou, por favor tente novamente"
   }
 }

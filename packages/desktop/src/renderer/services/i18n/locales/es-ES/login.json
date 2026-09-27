@@ -21,6 +21,7 @@
     "tooManyAttempts": "Demasiados intentos, vuelve a intentarlo más tarde",
     "networkError": "Error de conexión, intenta de nuevo",
     "serverError": "Error del servidor, intenta más tarde",
+    "csrfError": "El token de seguridad ha caducado. Inténtalo de nuevo.",
     "unknown": "Error al iniciar sesión, intenta de nuevo"
   }
 }

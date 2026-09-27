@@ -21,6 +21,7 @@
     "tooManyAttempts": "Zu viele Versuche, bitte später erneut versuchen",
     "networkError": "Verbindung fehlgeschlagen, bitte erneut versuchen",
     "serverError": "Serverfehler, bitte später erneut versuchen",
+    "csrfError": "Sicherheitstoken abgelaufen. Bitte erneut versuchen.",
     "unknown": "Anmeldung fehlgeschlagen, bitte erneut versuchen"
   }
 }
