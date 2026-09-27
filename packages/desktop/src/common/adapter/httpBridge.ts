@@ -58,6 +58,11 @@ export function getBaseUrl(): string {
   return `http://127.0.0.1:${getBackendPort()}`;
 }
 
+/** WebSocket URL for the backend realtime socket (`/ws`). */
+export function getRealtimeWebSocketUrl(): string {
+  return getWsUrl();
+}
+
 function getWsUrl(): string {
   if (isWebUiBrowserMode()) {
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -344,6 +349,43 @@ export function stubProvider<Data, Params = undefined>(name: string, defaultValu
 type WsCallback = (data: unknown) => void;
 const REALTIME_RECONNECTED_EVENT = 'realtime.reconnected';
 const wsListeners = new Map<string, Set<WsCallback>>();
+const emitterChannels = new WeakMap<object, string>();
+
+export type RealtimeFrame = {
+  name: string;
+  data: unknown;
+};
+
+/**
+ * Parse one backend realtime frame.
+ *
+ * The socket sends `{ name, data }`. Some producers use `{ event, payload }`
+ * instead. `data` / `name` win when they are present; nullish values fall
+ * through, matching the renderer listener.
+ */
+export function parseRealtimeFrame(raw: string): RealtimeFrame | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null;
+
+  const msg = parsed as { name?: unknown; event?: unknown; data?: unknown; payload?: unknown };
+  const name = msg.name ?? msg.event;
+  if (typeof name !== 'string' || name.length === 0) return null;
+  return { name, data: msg.data ?? msg.payload };
+}
+
+/** Channel name a `wsEmitter` / `wsMappedEmitter` was registered with. */
+export function realtimeChannelOf(emitter: object): string | undefined {
+  return emitterChannels.get(emitter);
+}
+
+function rememberRealtimeChannel(emitter: object, eventName: string): void {
+  emitterChannels.set(emitter, eventName);
+}
 let ws: WebSocket | null = null;
 let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let wsReconnectAttempt = 0;
@@ -405,22 +447,11 @@ function ensureWs(): void {
   });
 
   current.addEventListener('message', (event: MessageEvent) => {
-    try {
-      const msg = JSON.parse(event.data as string) as {
-        name?: string;
-        event?: string;
-        data?: unknown;
-        payload?: unknown;
-      };
-      const eventName = msg.name ?? msg.event;
-      const payload = msg.data ?? msg.payload;
-      console.debug('[WS:msg]', eventName, JSON.stringify(payload).slice(0, 200));
-      if (eventName) {
-        dispatchWsEvent(eventName, payload);
-      }
-    } catch {
-      // ignore non-JSON
-    }
+    const raw = typeof event.data === 'string' ? event.data : '';
+    const frame = parseRealtimeFrame(raw);
+    if (!frame) return;
+    console.debug('[WS:msg]', frame.name, JSON.stringify(frame.data).slice(0, 200));
+    dispatchWsEvent(frame.name, frame.data);
   });
 }
 
@@ -469,7 +500,7 @@ type EmitterLike<Params> = {
 };
 
 export function wsEmitter<Params = undefined>(eventName: string): EmitterLike<Params> {
-  return {
+  const emitter: EmitterLike<Params> = {
     on: (callback: (params: Params) => void) => {
       ensureWs();
       if (!wsListeners.has(eventName)) {
@@ -483,6 +514,8 @@ export function wsEmitter<Params = undefined>(eventName: string): EmitterLike<Pa
     },
     emit: (() => {}) as EmitterLike<Params>['emit'],
   };
+  rememberRealtimeChannel(emitter, eventName);
+  return emitter;
 }
 
 export function wsMappedEmitter<Params = undefined>(
@@ -490,7 +523,7 @@ export function wsMappedEmitter<Params = undefined>(
   transform: (raw: unknown) => Params
 ): EmitterLike<Params> {
   const inner = wsEmitter<unknown>(eventName);
-  return {
+  const emitter: EmitterLike<Params> = {
     on: (callback: (params: Params) => void) => {
       return inner.on((raw) => {
         callback(transform(raw));
@@ -498,6 +531,8 @@ export function wsMappedEmitter<Params = undefined>(
     },
     emit: (() => {}) as EmitterLike<Params>['emit'],
   };
+  rememberRealtimeChannel(emitter, eventName);
+  return emitter;
 }
 
 /**

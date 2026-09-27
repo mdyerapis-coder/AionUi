@@ -4,86 +4,224 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { REALTIME_CHANNELS } from '@/common/adapter/constant';
+import type { IResponseMessage } from '@/common/adapter/ipcBridge';
+import { isErrorTipMessage } from '@/common/chat/chatLib';
 import type { PetStateMachine } from './petStateMachine';
 import type { PetIdleTicker } from './petIdleTicker';
+import type { PetState } from './petTypes';
 
-const STREAM_CHANNELS = new Set(['chat.response.stream', 'openclaw.response.stream']);
-
-type StreamMessage = {
-  type?: string;
+/**
+ * Conversation and turn that produced the latest mapped frame.
+ * A follow-up can ignore stale Codex frames for the same `turnId` without
+ * parsing the socket payload again. This bridge does not apply that guard.
+ */
+export type PetActivityContext = {
+  conversationId?: string;
+  turnId?: string;
 };
 
+const ACP_TOOL_ACTIVE = new Set(['pending', 'in_progress']);
+const TOOL_GROUP_WORKING = new Set(['Executing', 'Pending']);
+
+/**
+ * Maps backend realtime frames onto the desktop pet.
+ *
+ * Frames arrive from the main-process `/ws` client (`petRealtime.ts`). The
+ * main-process `bridge.adapter.emit` path does not carry these events.
+ */
 export class PetEventBridge {
   private disposed = false;
+  private activity: PetActivityContext | undefined;
 
   constructor(
     private sm: PetStateMachine,
     private ticker: PetIdleTicker
   ) {}
 
-  handleBridgeMessage(channelName: string, data: unknown): void {
+  /**
+   * Latest frame that mapped to a pet state.
+   * `conversationId` / `turnId` are copied so callers cannot mutate the bridge.
+   */
+  getActivityContext(): PetActivityContext | undefined {
+    return this.activity ? { ...this.activity } : undefined;
+  }
+
+  /** Apply one backend realtime frame (`name` + payload). */
+  handleRealtimeEvent(name: string, data: unknown): void {
     if (this.disposed) return;
 
-    // Permission request → notification state
-    if (channelName === 'confirmation.add') {
-      this.ticker.resetIdle();
-      this.sm.requestState('notification');
-      return;
-    }
-
-    if (!STREAM_CHANNELS.has(channelName)) return;
-
-    const msg = data as StreamMessage | undefined;
-    if (!msg?.type) return;
-
-    let targetState: Parameters<PetStateMachine['requestState']>[0] | null = null;
-
-    switch (msg.type) {
-      case 'thinking':
-      case 'thought':
-        targetState = 'thinking';
-        break;
-      case 'text':
-      case 'content':
-        targetState = 'working';
-        break;
-      case 'finish':
-        // `done` is the functional completion signal (bubble + check).
-        // `happy` is reserved for user-initiated affection (right-click
-        // "pat") so the two animations carry distinct meanings instead
-        // of happy being both "AI finished" and "user petted me".
-        targetState = 'done';
-        break;
-      case 'error':
-        targetState = 'error';
-        break;
-    }
-
-    if (targetState) {
-      this.ticker.resetIdle();
-      this.sm.requestState(targetState);
+    switch (name) {
+      case REALTIME_CHANNELS.userCreated:
+        this.onUserCreated(data);
+        return;
+      case REALTIME_CHANNELS.messageStream:
+        this.onStream(data);
+        return;
+      case REALTIME_CHANNELS.turnCompleted:
+        this.onTurnCompleted(data);
+        return;
+      case REALTIME_CHANNELS.confirmationAdd:
+        this.handleConfirmationAdd(readActivityContext(data));
+        return;
+      case REALTIME_CHANNELS.teamChildTurnStarted:
+      case REALTIME_CHANNELS.teamRunStarted:
+        this.apply('working', readActivityContext(data));
+        return;
+      case REALTIME_CHANNELS.teamChildTurnCompleted:
+      case REALTIME_CHANNELS.teamRunCompleted:
+        this.handleTurnCompleted(readActivityContext(data));
+        return;
+      case REALTIME_CHANNELS.teamRunFailed:
+        this.apply('error', readActivityContext(data));
+        return;
+      case REALTIME_CHANNELS.cronJobExecuted:
+        if (isRecord(data) && data.status === 'ok') {
+          this.handleTurnCompleted(readActivityContext(data));
+        }
+        return;
+      default:
+        return;
     }
   }
 
-  handleUserSendMessage(): void {
-    if (this.disposed) return;
-    this.ticker.resetIdle();
-    this.sm.requestState('thinking');
+  /** User send, or a stream `start` when no user bubble was emitted. */
+  handleUserSendMessage(context?: PetActivityContext): void {
+    this.apply('thinking', context);
   }
 
-  handleTurnCompleted(): void {
-    if (this.disposed) return;
-    this.ticker.resetIdle();
-    this.sm.requestState('done');
+  /** Turn finished or cancelled. Cancel is `done`, never `error`. */
+  handleTurnCompleted(context?: PetActivityContext): void {
+    this.apply('done', context);
   }
 
-  handleConfirmationAdd(): void {
-    if (this.disposed) return;
-    this.ticker.resetIdle();
-    this.sm.requestState('notification');
+  /** Permission or question that needs the user. */
+  handleConfirmationAdd(context?: PetActivityContext): void {
+    this.apply('notification', context);
   }
 
   dispose(): void {
     this.disposed = true;
   }
+
+  private onUserCreated(data: unknown): void {
+    if (!isRecord(data) || data.hidden === true) return;
+    this.handleUserSendMessage(readActivityContext(data));
+  }
+
+  private onStream(data: unknown): void {
+    if (!isRecord(data) || typeof data.type !== 'string') return;
+    const context = readActivityContext(data);
+    const type = data.type;
+
+    if (type === 'start') {
+      this.handleUserSendMessage(context);
+      return;
+    }
+    if (type === 'thinking' || type === 'thought') {
+      this.apply('thinking', context);
+      return;
+    }
+    if (type === 'text' || type === 'content') {
+      this.apply('working', context);
+      return;
+    }
+    if (type === 'acp_tool_call' && ACP_TOOL_ACTIVE.has(acpToolStatus(data.data) ?? '')) {
+      this.apply('working', context);
+      return;
+    }
+    if (type === 'tool_group') {
+      const statuses = toolGroupStatuses(data.data);
+      if (statuses.includes('Confirming')) {
+        this.handleConfirmationAdd(context);
+        return;
+      }
+      if (statuses.some((status) => TOOL_GROUP_WORKING.has(status))) {
+        this.apply('working', context);
+      }
+      return;
+    }
+    if (type === 'acp_permission' || type === 'permission' || type === 'ask') {
+      this.handleConfirmationAdd(context);
+      return;
+    }
+    if (type === 'finish') {
+      this.handleTurnCompleted(context);
+      return;
+    }
+    if (type === 'error' || isTipsError(data) || isAgentStatusError(data)) {
+      this.apply('error', context);
+    }
+  }
+
+  private onTurnCompleted(data: unknown): void {
+    const context = readActivityContext(data);
+    const outcome = turnOutcome(data);
+    if (outcome === 'error') {
+      this.apply('error', context);
+      return;
+    }
+    if (outcome === 'done' || outcome === 'cancel') {
+      this.handleTurnCompleted(context);
+    }
+  }
+
+  private apply(state: PetState, context?: PetActivityContext): void {
+    if (this.disposed) return;
+    if (context) this.activity = context;
+    this.ticker.resetIdle();
+    this.sm.requestState(state);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readString(record: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'string' && value.length > 0) return value;
+  }
+  return undefined;
+}
+
+function readActivityContext(data: unknown): PetActivityContext | undefined {
+  if (!isRecord(data)) return undefined;
+  const conversationId = readString(data, ['conversation_id', 'conversationId', 'session_id', 'sessionId']);
+  const turnId = readString(data, ['turn_id', 'turnId']);
+  if (!conversationId && !turnId) return undefined;
+  return {
+    ...(conversationId ? { conversationId } : {}),
+    ...(turnId ? { turnId } : {}),
+  };
+}
+
+function acpToolStatus(data: unknown): string | undefined {
+  if (!isRecord(data) || !isRecord(data.update)) return undefined;
+  return typeof data.update.status === 'string' ? data.update.status : undefined;
+}
+
+function toolGroupStatuses(data: unknown): string[] {
+  if (!Array.isArray(data)) return [];
+  return data.flatMap((item) => (isRecord(item) && typeof item.status === 'string' ? [item.status] : []));
+}
+
+function isTipsError(data: Record<string, unknown>): boolean {
+  return isErrorTipMessage(data as unknown as IResponseMessage);
+}
+
+function isAgentStatusError(data: Record<string, unknown>): boolean {
+  return data.type === 'agent_status' && isRecord(data.data) && data.data.status === 'error';
+}
+
+/** `cancel` is a stopped turn: show `done`, never `error`. */
+function turnOutcome(data: unknown): 'error' | 'cancel' | 'done' | null {
+  if (!isRecord(data)) return null;
+  const state = typeof data.state === 'string' ? data.state : undefined;
+  const status = typeof data.status === 'string' ? data.status : undefined;
+  if (state === 'error') return 'error';
+  if (state === 'stopped') return 'cancel';
+  if (status === 'finished' || state === 'ai_waiting_input') return 'done';
+  return null;
 }

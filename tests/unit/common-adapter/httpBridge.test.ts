@@ -25,6 +25,8 @@ import {
   wsMappedEmitter,
   stubEmitter,
   httpRequest,
+  parseRealtimeFrame,
+  realtimeChannelOf,
 } from '@/common/adapter/httpBridge';
 
 type FakeSocketEventMap = {
@@ -534,6 +536,46 @@ describe('httpBridge', () => {
 
       expect(fetchSpy.mock.calls[0][1]?.method).toBe('DELETE');
       expect(fetchSpy.mock.calls[0][1]?.body).toBeUndefined();
+    });
+  });
+
+  describe('parseRealtimeFrame', () => {
+    it('reads name and data', () => {
+      expect(parseRealtimeFrame(JSON.stringify({ name: 'message.stream', data: { type: 'text' } }))).toEqual({
+        name: 'message.stream',
+        data: { type: 'text' },
+      });
+    });
+
+    it('falls through to event and payload when name and data are nullish', () => {
+      expect(
+        parseRealtimeFrame(
+          JSON.stringify({ name: null, event: 'message.stream', data: null, payload: { type: 'thought' } })
+        )
+      ).toEqual({
+        name: 'message.stream',
+        data: { type: 'thought' },
+      });
+    });
+
+    it('rejects malformed JSON and frames with no channel name', () => {
+      expect(parseRealtimeFrame('not-json')).toBeNull();
+      expect(parseRealtimeFrame(JSON.stringify({ data: { type: 'text' } }))).toBeNull();
+      expect(parseRealtimeFrame(JSON.stringify({ name: '', data: {} }))).toBeNull();
+    });
+  });
+
+  describe('realtimeChannelOf', () => {
+    it('remembers the channel passed to wsEmitter and wsMappedEmitter', () => {
+      const stream = wsEmitter('message.stream');
+      const turn = wsMappedEmitter('turn.completed', (raw) => raw);
+
+      expect(realtimeChannelOf(stream)).toBe('message.stream');
+      expect(realtimeChannelOf(turn)).toBe('turn.completed');
+    });
+
+    it('returns undefined for an object that is not an emitter', () => {
+      expect(realtimeChannelOf({})).toBeUndefined();
     });
   });
 });
