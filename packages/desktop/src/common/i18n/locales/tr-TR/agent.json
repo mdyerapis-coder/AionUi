@@ -30,6 +30,8 @@
   "model": {
     "switchSuccess": "Model switched successfully",
     "switchFailed": "Failed to switch model",
+    "runtimeRestartFailed": "Model kaydedildi ancak asistan yeniden çevrimiçi olmadı. Yeniden gönderin veya yanıt gelmezse modeli bir kez daha değiştirin.",
+    "replyAfterSwitchTimeout": "Geçişten sonra yanıt gelmedi. Tur durduruldu, yeniden gönderebilirsiniz.",
     "searchPlaceholder": "Model ara",
     "noResults": "Eşleşen model yok"
   },

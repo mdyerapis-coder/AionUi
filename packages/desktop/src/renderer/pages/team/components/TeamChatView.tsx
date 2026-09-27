@@ -5,6 +5,10 @@ import { Message, Spin } from '@arco-design/web-react';
 import React, { Suspense, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAionrsModelSelection } from '@/renderer/pages/conversation/platforms/aionrs/useAionrsModelSelection';
+import {
+  armAionrsSwitchReply,
+  reinitializeAionrsAfterModelChange,
+} from '@/renderer/pages/conversation/platforms/aionrs/aionrsRuntimeSwitch';
 import { isLegacyReadOnlyConversationType } from '@/renderer/pages/conversation/utils/conversationRuntime';
 import type { ITeamRunAck } from '@/common/types/team/teamTypes';
 import {
@@ -76,8 +80,14 @@ const AionrsTeamChat: React.FC<{
   const onSelectModel = useCallback(
     async (_provider: IProvider, modelName: string) => {
       const selected = { ..._provider, use_model: modelName } as TProviderWithModel;
-      const ok = await ipcBridge.conversation.update.invoke({ id: conversation.id, updates: { model: selected } });
-      return Boolean(ok);
+      const outcome = await reinitializeAionrsAfterModelChange({
+        activeTurnId: null,
+        updateModel: async () =>
+          Boolean(await ipcBridge.conversation.update.invoke({ id: conversation.id, updates: { model: selected } })),
+      });
+      if (outcome.status !== 'updated') return false;
+      armAionrsSwitchReply(conversation.id);
+      return true;
     },
     [conversation.id]
   );

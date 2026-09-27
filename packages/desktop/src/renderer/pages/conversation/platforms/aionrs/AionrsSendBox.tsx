@@ -36,6 +36,13 @@ import { useConversationRuntimeView } from '@/renderer/pages/conversation/runtim
 import { getConversationRuntimeWorkspaceErrorMessage } from '@/renderer/pages/conversation/utils/conversationCreateError';
 import { getChatSurfaceWidthClass } from '@/renderer/pages/conversation/utils/chatSurfaceWidth';
 import { ensureConversationRuntime } from '@/renderer/pages/conversation/utils/ensureConversationRuntime';
+import {
+  AIONRS_SWITCH_REPLY_TIMEOUT_MS,
+  aionrsSwitchReplyDecision,
+  armAionrsSwitchReply,
+  beginAionrsSwitchReply,
+  takeAionrsSwitchReplyTurn,
+} from './aionrsRuntimeSwitch';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { useTeamPermission } from '@/renderer/pages/team/hooks/TeamPermissionContext';
 import type { TeamSendBoxRuntime } from '@/renderer/pages/team/components/teamSendRuntime';
@@ -48,7 +55,7 @@ import { collectChatFileRefs, splitChatFileRefs } from '@/renderer/utils/file/me
 import type { AgentModeOption } from '@/renderer/utils/model/agentTypes';
 import { Message, Tag } from '@arco-design/web-react';
 import { Brain, MagicHat, Shield } from '@icon-park/react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { classifyConversationBusyError } from '../conversationBusyError';
 import { useAionrsMessage } from './useAionrsMessage';
@@ -141,6 +148,15 @@ const AionrsSendBox: React.FC<{
   const { current_model } = modelSelection;
   const teamPermission = useTeamPermission();
   const propagateMode = teamPermission?.propagateMode;
+  const switchReplyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const noteModeSwitch = useCallback(
+    (mode: string) => {
+      armAionrsSwitchReply(conversation_id);
+      propagateMode?.(mode);
+    },
+    [conversation_id, propagateMode]
+  );
 
   const { thought, running, turnStartedAtMs, setActiveMsgId, setWaitingResponse, resetState } = useAionrsMessage(
     conversation_id,
@@ -153,6 +169,34 @@ const AionrsSendBox: React.FC<{
       },
     }
   );
+
+  const scheduleSwitchReplyWatch = useCallback(
+    (turnId: string) => {
+      if (switchReplyTimerRef.current) clearTimeout(switchReplyTimerRef.current);
+      if (!beginAionrsSwitchReply(conversation_id, turnId, Date.now())) return;
+      switchReplyTimerRef.current = setTimeout(() => {
+        switchReplyTimerRef.current = null;
+        if (aionrsSwitchReplyDecision(conversation_id, Date.now()) !== 'give_up') return;
+        const turnToStop = takeAionrsSwitchReplyTurn(conversation_id);
+        setWaitingResponse(false);
+        if (turnToStop) {
+          void ipcBridge.conversation.stop
+            .invoke({ conversation_id, turn_id: turnToStop })
+            .catch((): void => undefined);
+        }
+        Message.error(t('agent.model.replyAfterSwitchTimeout'));
+      }, AIONRS_SWITCH_REPLY_TIMEOUT_MS);
+    },
+    [conversation_id, setWaitingResponse, t]
+  );
+
+  useEffect(
+    () => () => {
+      if (switchReplyTimerRef.current) clearTimeout(switchReplyTimerRef.current);
+    },
+    []
+  );
+
   const runtimeView = useConversationRuntimeView(conversation_id);
   const { markSendStarted, markSendAccepted, markSendFailed } = runtimeView;
 
@@ -280,6 +324,7 @@ const AionrsSendBox: React.FC<{
         });
         setActiveMsgId(res.msg_id);
         markSendAccepted(res.turn_id, res.runtime, res.msg_id);
+        scheduleSwitchReplyWatch(res.turn_id);
         emitter.emit('chat.history.refresh');
         if (files.length > 0) {
           emitter.emit('aionrs.workspace.refresh');
@@ -312,6 +357,7 @@ const AionrsSendBox: React.FC<{
       markSendAccepted,
       markSendFailed,
       markSendStarted,
+      scheduleSwitchReplyWatch,
       setActiveMsgId,
       setWaitingResponse,
       t,
@@ -438,14 +484,14 @@ const AionrsSendBox: React.FC<{
       try {
         await runtimeConfig.setConfigOption(runtimeMode.id, mode);
         setCurrentMode(mode);
-        propagateMode?.(mode);
+        noteModeSwitch(mode);
         Message.success(t('agentMode.switchSuccess'));
       } catch (error) {
         console.error('[AionrsSendBox] Failed to switch mode via sheet:', error);
         Message.error(t(configErrorMessageKey(error)));
       }
     },
-    [propagateMode, runtimeConfig, runtimeMode, t]
+    [noteModeSwitch, runtimeConfig, runtimeMode, t]
   );
 
   const handleSheetModelSelect = useCallback(
@@ -747,7 +793,7 @@ const AionrsSendBox: React.FC<{
               modeLabelFormatter={(mode) => t(`agentMode.${mode.value}`, { defaultValue: mode.label })}
               compactLabelPrefix={t('agentMode.permission')}
               hideCompactLabelPrefixOnMobile
-              onModeChanged={propagateMode}
+              onModeChanged={noteModeSwitch}
               beforeRuntimeSync={prepareRuntimeConfig}
               beforeRuntimeSet={teamPermission?.warmupSession}
               loadConfigOptions={teamPermission?.loadConfigOptions}

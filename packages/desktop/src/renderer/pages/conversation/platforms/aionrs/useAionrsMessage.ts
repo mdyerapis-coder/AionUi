@@ -16,6 +16,7 @@ import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conve
 import { isConversationProcessing } from '@/renderer/pages/conversation/utils/conversationRuntime';
 import { beginConversationTurn, endConversationTurn } from '@/renderer/pages/conversation/utils/conversationTurnClock';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { acknowledgeAionrsSwitchReply, noteAionrsSwitchReplyActivity } from './aionrsRuntimeSwitch';
 import { processLocalCronResponse } from './localCronCommands';
 
 type TokenUsage = {
@@ -206,6 +207,12 @@ export const useAionrsMessage = (
     return ipcBridge.conversation.responseStream.on((message) => {
       if (conversation_id !== message.conversation_id) {
         return;
+      }
+
+      if (message.type === 'finish' || message.type === 'error' || isErrorTipMessage(message)) {
+        acknowledgeAionrsSwitchReply(conversation_id, message.turn_id);
+      } else {
+        noteAionrsSwitchReplyActivity(conversation_id, message.turn_id);
       }
 
       if (isErrorTipMessage(message)) {
