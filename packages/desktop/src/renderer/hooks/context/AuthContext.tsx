@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { PREVIEW_SCOPE_KEY_PREFIX } from '@/renderer/pages/conversation/Preview/context/previewScope';
+import { refreshSession } from '@/common/adapter/sessionRefresh';
 
 type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
 
@@ -74,11 +75,26 @@ function clearAuthCache(): void {
 
 async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> {
   try {
-    const response = await fetch(AUTH_USER_ENDPOINT, {
+    let response = await fetch(AUTH_USER_ENDPOINT, {
       method: 'GET',
       credentials: 'include',
       signal,
     });
+
+    // The access cookie may have expired — attempt one silent session refresh
+    // and re-check before concluding the user is unauthenticated. Without this
+    // the status poll would kick a refreshable session to /login (#4124).
+    // refreshSession() single-flights with the httpBridge refresh path.
+    if (response.status === 401) {
+      const refreshed = await refreshSession();
+      if (refreshed) {
+        response = await fetch(AUTH_USER_ENDPOINT, {
+          method: 'GET',
+          credentials: 'include',
+          signal,
+        });
+      }
+    }
 
     if (!response.ok) {
       return null;

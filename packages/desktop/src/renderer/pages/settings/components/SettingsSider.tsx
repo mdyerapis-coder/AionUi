@@ -9,6 +9,7 @@ import {
   Communication,
   Computer,
   Earth,
+  Inbox,
   Info,
   Lightning,
   LinkCloud,
@@ -37,6 +38,7 @@ export const BUILTIN_TAB_IDS = [
   'webui',
   'pet',
   'system',
+  'archived',
   'about',
 ] as const;
 
@@ -59,6 +61,7 @@ export const LEGACY_ANCHOR_REMAP: Record<string, string> = {
 const GROUP_HEADER_BEFORE: Record<string, string> = {
   agent: 'settings.groupAiCore',
   appearance: 'settings.groupApp',
+  archived: 'settings.archived.title',
   about: 'settings.groupAbout',
 };
 
@@ -143,6 +146,12 @@ export function buildSettingsNavItems(
     },
     pet: { id: 'pet', label: t('pet.desktopPet'), icon: navIcon(Cat), path: 'pet' },
     system: { id: 'system', label: t('settings.system'), icon: navIcon(System), path: 'system' },
+    archived: {
+      id: 'archived',
+      label: t('settings.archived.navLabel'),
+      icon: navIcon(Inbox),
+      path: 'archived',
+    },
     about: { id: 'about', label: t('settings.about'), icon: navIcon(Info), path: 'about' },
   };
 

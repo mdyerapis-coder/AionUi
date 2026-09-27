@@ -48,6 +48,8 @@ vi.mock('@/renderer/pages/conversation/explorer/ExplorerPanel', () => ({
     onCopyRelativePath,
     onCopyAbsolutePath,
     onImportFiles,
+    onNewFile,
+    onNewDir,
   }: {
     roots: Array<{ title: string }>;
     onRemoveRoot?: (id: string) => void;
@@ -56,6 +58,8 @@ vi.mock('@/renderer/pages/conversation/explorer/ExplorerPanel', () => ({
     onCopyRelativePath?: (pe: string, rel: string, name: string) => void;
     onCopyAbsolutePath?: (pe: string, rel: string) => void;
     onImportFiles?: (pe: string, rel: string, paths: string[]) => void;
+    onNewFile?: (pe: string, dirRel: string) => void;
+    onNewDir?: (pe: string, dirRel: string) => void;
   }) => (
     <div>
       <span data-testid='roots'>{roots.map((r) => r.title).join(',')}</span>
@@ -84,8 +88,23 @@ vi.mock('@/renderer/pages/conversation/explorer/ExplorerPanel', () => ({
       <button data-testid='do-import' onClick={() => onImportFiles?.('peA', 'sub', ['/os/a.txt', '/os/b.txt'])}>
         import
       </button>
+      <button data-testid='do-new-file' onClick={() => onNewFile?.('peA', 'src')}>
+        new-file
+      </button>
+      <button data-testid='do-new-file-root' onClick={() => onNewFile?.('peA', '')}>
+        new-file-root
+      </button>
+      <button data-testid='do-new-dir' onClick={() => onNewDir?.('peA', 'src')}>
+        new-dir
+      </button>
     </div>
   ),
+}));
+
+// Stub the Changes-tab panel: this suite only exercises the container's toolbar and
+// Files tab, and mounting the real ScmPanel would drag in the WS transport chain.
+vi.mock('@/renderer/pages/conversation/SourceControl/ScmPanel', () => ({
+  ScmPanel: () => <div data-testid='scm-panel-stub' />,
 }));
 
 const projectGet = vi.fn<(p: { project_id: string }) => Promise<ProjectDetailDto>>();
@@ -116,6 +135,7 @@ vi.mock('@/common', () => ({
 }));
 
 import { ExplorerContainer } from '@/renderer/pages/conversation/explorer/ExplorerContainer';
+import * as explorerStore from '@/renderer/pages/conversation/explorer/explorerStore';
 import { resetExplorerStoreForTest } from '@/renderer/pages/conversation/explorer/explorerStore';
 
 const entry = (over: Partial<ProjectEntryDto>): ProjectEntryDto => ({
@@ -254,6 +274,65 @@ describe('ExplorerContainer attach/remove', () => {
     await waitFor(() => expect(removeFolder).toHaveBeenCalledWith({ project_id: 'p1', pe_id: 'peA' }));
     await waitFor(() => expect(projectGet).toHaveBeenCalledTimes(2));
   });
+
+  it('top-bar refresh on the Files tab remounts every root AND revalidates HTTP detail (runtime_status/caution icon)', async () => {
+    // The single top-bar refresh is scoped to the visible tab; on Files it remounts
+    // each pe root's watched dirs via refreshRoot (re-arm watch, re-read baseline)
+    // without touching subscriptions, and mutate() re-fetches project.get so a
+    // recovered/degraded root's runtime_status (the caution icon, HTTP-sourced not
+    // WS-sourced) updates.
+    const refreshSpy = vi.spyOn(explorerStore, 'refreshRoot');
+    renderIt();
+    await screen.findByTestId('roots');
+    // Files is the default tab, so the button refreshes roots (aria-label is the
+    // Files-scoped copy; react-i18next `t` is mocked to echo the key).
+    fireEvent.click(screen.getByLabelText('conversation.explorer.refreshFiles'));
+    await waitFor(() => expect(refreshSpy).toHaveBeenCalledWith('peA'));
+    await waitFor(() => expect(projectGet).toHaveBeenCalledTimes(2)); // initial + revalidate
+  });
+
+  it('top-bar refresh stays busy (disabled) until the in-flight refresh settles', async () => {
+    // Hold the revalidation open so the busy window is observable: the initial load
+    // resolves, but the project.get the refresh triggers hangs until released.
+    let release: () => void = () => {};
+    const held = new Promise<ProjectDetailDto>((resolve) => {
+      release = () => resolve(detail([entry({ pe_id: 'peA', display_name: 'Root' })]));
+    });
+    projectGet
+      .mockReset()
+      .mockResolvedValueOnce(detail([entry({ pe_id: 'peA', display_name: 'Root' })]))
+      .mockReturnValueOnce(held);
+    renderIt();
+    await screen.findByTestId('roots');
+
+    // Arco marks a busy Button with the `arco-btn-loading` class (spinner + it
+    // swallows further clicks); the handler's own re-entry guard blocks pile-up too.
+    const btn = screen.getByLabelText('conversation.explorer.refreshFiles');
+    expect(btn.className).not.toContain('arco-btn-loading');
+    fireEvent.click(btn);
+    await waitFor(() => expect(btn.className).toContain('arco-btn-loading'));
+
+    release();
+    await waitFor(() => expect(btn.className).not.toContain('arco-btn-loading'));
+  });
+
+  it('shows Collapse all on the Files tab and clicking it collapses the tree', async () => {
+    const collapseSpy = vi.spyOn(explorerStore, 'collapseAll').mockImplementation(() => {});
+    renderIt();
+    await screen.findByTestId('roots');
+    fireEvent.click(screen.getByLabelText('conversation.explorer.collapseAll'));
+    expect(collapseSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides Collapse all on the Changes tab — there is no tree to collapse there', async () => {
+    renderIt();
+    await screen.findByTestId('roots');
+    // Switch to the Changes tab (react-i18next `t` is mocked to echo the key).
+    fireEvent.click(screen.getByText('conversation.explorer.tabs.changes'));
+    expect(screen.queryByLabelText('conversation.explorer.collapseAll')).toBeNull();
+    // Refresh stays (now Changes-scoped), confirming only collapse-all is tab-gated.
+    expect(screen.getByLabelText('conversation.explorer.refreshChanges')).toBeInTheDocument();
+  });
 });
 
 describe('ExplorerContainer add-to-chat', () => {
@@ -376,5 +455,72 @@ describe('ExplorerContainer A-paste import', () => {
     renderIt();
     fireEvent.click(await screen.findByTestId('do-copy-abs'));
     await waitFor(() => expect(Message.error).toHaveBeenCalledWith('conversation.explorer.copyFailed'));
+  });
+});
+
+describe('ExplorerContainer new file / new folder', () => {
+  const nameInput = () => screen.findByPlaceholderText('conversation.explorer.namePlaceholder');
+  // Create-mode dialog OK button label is common.create (rename uses common.save).
+  const clickCreate = () => fireEvent.click(screen.getByRole('button', { name: 'common.create' }));
+  const type = (input: HTMLElement, value: string) => fireEvent.change(input, { target: { value } });
+
+  it('new file: dispatches fs/createFile with the parent dir joined to the typed name', async () => {
+    renderIt();
+    fireEvent.click(await screen.findByTestId('do-new-file'));
+    type(await nameInput(), 'index.ts');
+    clickCreate();
+    await waitFor(() =>
+      expect(fsRead).toHaveBeenCalledWith('fs/createFile', { file: { pe_id: 'peA', relative_path: 'src/index.ts' } })
+    );
+  });
+
+  it('new folder: dispatches fs/mkdir with the parent dir joined to the typed name', async () => {
+    renderIt();
+    fireEvent.click(await screen.findByTestId('do-new-dir'));
+    type(await nameInput(), 'utils');
+    clickCreate();
+    await waitFor(() =>
+      expect(fsRead).toHaveBeenCalledWith('fs/mkdir', { dir: { pe_id: 'peA', relative_path: 'src/utils' } })
+    );
+  });
+
+  it('new file at a pe-root (targetDir "") joins to a bare name — no leading slash', async () => {
+    renderIt();
+    fireEvent.click(await screen.findByTestId('do-new-file-root'));
+    type(await nameInput(), 'top.ts');
+    clickCreate();
+    await waitFor(() =>
+      expect(fsRead).toHaveBeenCalledWith('fs/createFile', { file: { pe_id: 'peA', relative_path: 'top.ts' } })
+    );
+  });
+
+  it('empty name is a no-op: no request dispatched, no error toast', async () => {
+    renderIt();
+    fireEvent.click(await screen.findByTestId('do-new-file'));
+    await nameInput(); // dialog is open with an empty default
+    clickCreate(); // submit with the empty default
+    // The builder returns null on a blank name, so submit bails before any await:
+    // nothing goes over the wire and no failure surfaces — a clean dismissal, not
+    // an error. (Assert on behavior: Arco keeps the modal mounted-but-hidden.)
+    expect(fsRead).not.toHaveBeenCalled();
+    expect(Message.error).not.toHaveBeenCalled();
+  });
+
+  it('surfaces newFileFailed when the create request throws (e.g. name already exists)', async () => {
+    fsRead.mockRejectedValueOnce(new Error('exists'));
+    renderIt();
+    fireEvent.click(await screen.findByTestId('do-new-file'));
+    type(await nameInput(), 'dup.ts');
+    clickCreate();
+    await waitFor(() => expect(Message.error).toHaveBeenCalledWith('conversation.explorer.newFileFailed'));
+  });
+
+  it('surfaces newDirFailed when the mkdir request throws', async () => {
+    fsRead.mockRejectedValueOnce(new Error('exists'));
+    renderIt();
+    fireEvent.click(await screen.findByTestId('do-new-dir'));
+    type(await nameInput(), 'dup');
+    clickCreate();
+    await waitFor(() => expect(Message.error).toHaveBeenCalledWith('conversation.explorer.newDirFailed'));
   });
 });
