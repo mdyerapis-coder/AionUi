@@ -230,6 +230,63 @@ function acpTool(status: 'pending' | 'in_progress' | 'completed' | 'failed') {
   });
 }
 
+async function listen(servers: WebSocketServer[]): Promise<WebSocketServer> {
+  const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
+  servers.push(server);
+  await new Promise<void>((resolve) => {
+    server.once('listening', () => resolve());
+  });
+  return server;
+}
+
+function portOf(server: WebSocketServer): number {
+  return (server.address() as AddressInfo).port;
+}
+
+async function closeServer(server: WebSocketServer, servers: WebSocketServer[]): Promise<void> {
+  const index = servers.indexOf(server);
+  if (index >= 0) servers.splice(index, 1);
+  if (server.address() === null) return;
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+}
+
+async function waitForOpenClient(server: WebSocketServer): Promise<WebSocket> {
+  const openClient = (): WebSocket | undefined =>
+    [...server.clients].find((socket) => socket.readyState === WebSocket.OPEN);
+  await vi.waitFor(
+    () => {
+      expect(openClient()).toBeTruthy();
+    },
+    { timeout: 4000 }
+  );
+  const socket = openClient();
+  if (!socket) throw new Error('pet socket disappeared');
+  return socket;
+}
+
+function sendFrame(
+  socket: WebSocket,
+  readPending: () => ((frame: RealtimeFrame) => void) | null,
+  writePending: (pending: ((frame: RealtimeFrame) => void) | null) => void,
+  body: unknown
+): Promise<RealtimeFrame> {
+  const frame = new Promise<RealtimeFrame>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out waiting for a realtime frame')), 2000);
+    writePending((next) => {
+      clearTimeout(timer);
+      resolve(next);
+    });
+    if (readPending() === null) {
+      clearTimeout(timer);
+      reject(new Error('frame waiter was replaced before the socket send'));
+    }
+  });
+  socket.send(JSON.stringify(body));
+  return frame;
+}
+
 async function expectState(sm: PetStateMachine, state: PetState): Promise<void> {
   await vi.waitFor(() => {
     expect(sm.getCurrentState()).toBe(state);
@@ -282,6 +339,119 @@ describe('pet realtime socket', () => {
         await send(conversation.userCreated, userMessage());
         await expectState(sm, 'thinking');
       });
+    });
+
+    it('reacts again after the backend is replaced on a new port', async () => {
+      const globals = globalThis as typeof globalThis & { __backendPort?: number };
+      const previousPort = globals.__backendPort;
+      const sm = new PetStateMachine();
+      const bridge = new PetEventBridge(sm, { resetIdle() {} } as PetIdleTicker);
+      const first = await listen(openServers);
+      let replacement: WebSocketServer | undefined;
+      const firstPort = portOf(first);
+      globals.__backendPort = firstPort;
+      let pending: ((frame: RealtimeFrame) => void) | null = null;
+      const client = startPetRealtimeClient({
+        bridge,
+        onFrame(frame) {
+          const resolve = pending;
+          pending = null;
+          resolve?.(frame);
+        },
+      });
+      openClients.push(client);
+      try {
+        const socket = await waitForOpenClient(first);
+        await sendFrame(
+          socket,
+          () => pending,
+          (next) => {
+            pending = next;
+          },
+          {
+            name: channelOf(conversation.responseStream),
+            data: stream('thinking', { content: 'hmm', status: 'thinking' }),
+          }
+        );
+        await expectState(sm, 'thinking');
+
+        for (const open of first.clients) open.terminate();
+        await closeServer(first, openServers);
+        replacement = await listen(openServers);
+        const replacementPort = portOf(replacement);
+        expect(replacementPort).not.toBe(firstPort);
+        globals.__backendPort = replacementPort;
+
+        const next = await waitForOpenClient(replacement);
+        await sendFrame(
+          next,
+          () => pending,
+          (nextPending) => {
+            pending = nextPending;
+          },
+          { name: channelOf(conversation.responseStream), data: stream('text', { content: 'hello' }) }
+        );
+        await expectState(sm, 'working');
+      } finally {
+        if (previousPort === undefined) delete globals.__backendPort;
+        else globals.__backendPort = previousPort;
+        bridge.dispose();
+        sm.dispose();
+      }
+    });
+
+    it('moves to a new backend port while the old socket is still open', async () => {
+      const globals = globalThis as typeof globalThis & { __backendPort?: number };
+      const previousPort = globals.__backendPort;
+      const sm = new PetStateMachine();
+      const bridge = new PetEventBridge(sm, { resetIdle() {} } as PetIdleTicker);
+      const first = await listen(openServers);
+      const replacement = await listen(openServers);
+      globals.__backendPort = portOf(first);
+      let pending: ((frame: RealtimeFrame) => void) | null = null;
+      const client = startPetRealtimeClient({
+        bridge,
+        onFrame(frame) {
+          const resolve = pending;
+          pending = null;
+          resolve?.(frame);
+        },
+      });
+      openClients.push(client);
+      try {
+        const socket = await waitForOpenClient(first);
+        await sendFrame(
+          socket,
+          () => pending,
+          (next) => {
+            pending = next;
+          },
+          {
+            name: channelOf(conversation.responseStream),
+            data: stream('thinking', { content: 'hmm', status: 'thinking' }),
+          }
+        );
+        await expectState(sm, 'thinking');
+
+        expect(portOf(replacement)).not.toBe(portOf(first));
+        globals.__backendPort = portOf(replacement);
+        const next = await waitForOpenClient(replacement);
+        expect(next.readyState).toBe(WebSocket.OPEN);
+        await sendFrame(
+          next,
+          () => pending,
+          (nextPending) => {
+            pending = nextPending;
+          },
+          { name: channelOf(conversation.responseStream), data: stream('text', { content: 'hello' }) }
+        );
+        await expectState(sm, 'working');
+      } finally {
+        if (previousPort === undefined) delete globals.__backendPort;
+        else globals.__backendPort = previousPort;
+        bridge.dispose();
+        sm.dispose();
+      }
     });
 
     it('does not reconnect after the pet client is closed', async () => {

@@ -27,6 +27,7 @@ import {
   httpRequest,
   parseRealtimeFrame,
   realtimeChannelOf,
+  getRealtimeHandshake,
 } from '@/common/adapter/httpBridge';
 
 type FakeSocketEventMap = {
@@ -536,6 +537,23 @@ describe('httpBridge', () => {
 
       expect(fetchSpy.mock.calls[0][1]?.method).toBe('DELETE');
       expect(fetchSpy.mock.calls[0][1]?.body).toBeUndefined();
+    });
+  });
+
+  describe('getRealtimeHandshake', () => {
+    it('uses the published loopback port and sends no protocol or header', () => {
+      (globalThis as { __backendPort?: number }).__backendPort = 23456;
+      expect(getRealtimeHandshake()).toEqual({ url: 'ws://127.0.0.1:23456/ws' });
+      delete (globalThis as { __backendPort?: number }).__backendPort;
+    });
+
+    it('follows a new published port instead of keeping the previous one', () => {
+      const globals = globalThis as { __backendPort?: number };
+      globals.__backendPort = 20001;
+      expect(getRealtimeHandshake().url).toBe('ws://127.0.0.1:20001/ws');
+      globals.__backendPort = 20002;
+      expect(getRealtimeHandshake().url).toBe('ws://127.0.0.1:20002/ws');
+      delete globals.__backendPort;
     });
   });
 

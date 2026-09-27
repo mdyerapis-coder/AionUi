@@ -366,9 +366,12 @@ function ensureAdminUserOnce(backendPort: number): Promise<void> {
 }
 
 function markBackendReady(backendPort: number, source: string): void {
+  // A crash restart can bind a new port. Main-process callers, including the
+  // pet socket, re-read globalThis.__backendPort on each connection. Publish
+  // every ready signal. The work below stays one-shot.
+  exposeBackendPort(backendPort);
   if (backendStartedOk) return;
   console.log(`[AionUi] ${source} ready (port=${backendPort})`);
-  exposeBackendPort(backendPort);
   registerCronResumeBridge(backendPort);
   backendStartedOk = true;
   backendStartupFailed = false;

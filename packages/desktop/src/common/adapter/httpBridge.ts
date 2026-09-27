@@ -58,9 +58,44 @@ export function getBaseUrl(): string {
   return `http://127.0.0.1:${getBackendPort()}`;
 }
 
+/**
+ * What the renderer passes when it opens `/ws`.
+ *
+ * Electron (`ensureWs` below): `new WebSocket(url)` with one argument. The URL
+ * is `ws://127.0.0.1:<port>/ws`. The renderer learns `port` once, when preload
+ * runs `ipcRenderer.sendSync('get-backend-port')` and exposes
+ * `window.__backendPort`. That IPC handler returns `backendManager.port`.
+ * The main process has no `window`; `src/index.ts` writes the same number to
+ * `globalThis.__backendPort` (and rewrites it when a restarted backend binds
+ * a new port). The browser WebSocket constructor cannot set headers, the call
+ * passes no subprotocol, and desktop auth never logs in, so no session cookie
+ * is stored for the loopback origin. No token, cookie, or extra header.
+ *
+ * WebUI (`browser.ts`) also calls `new WebSocket(url)` with no protocols or
+ * headers. The page is same-origin, so the browser attaches the
+ * `aionui-session` cookie itself. The pet runs in the Electron main process
+ * and follows the Electron handshake, not that cookie.
+ */
+export type RealtimeSocketHandshake = {
+  url: string;
+  /** Subprotocols. The desktop renderer passes none. */
+  protocols?: string | string[];
+  /**
+   * Extra handshake headers. The desktop renderer sends none. Present so a
+   * caller that learns a token later can attach it, and so a reconnect
+   * re-reads it instead of keeping the previous value.
+   */
+  headers?: Record<string, string>;
+};
+
+/** Handshake the renderer uses for `/ws`. Call again after a backend restart. */
+export function getRealtimeHandshake(): RealtimeSocketHandshake {
+  return { url: getWsUrl() };
+}
+
 /** WebSocket URL for the backend realtime socket (`/ws`). */
 export function getRealtimeWebSocketUrl(): string {
-  return getWsUrl();
+  return getRealtimeHandshake().url;
 }
 
 function getWsUrl(): string {
