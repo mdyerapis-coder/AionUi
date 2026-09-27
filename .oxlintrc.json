@@ -67,7 +67,6 @@
     "public/",
     "resources/",
     "docs/",
-    "scripts/",
-    "mobile/"
+    "scripts/"
   ]
 }

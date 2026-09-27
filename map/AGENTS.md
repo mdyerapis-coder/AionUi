@@ -1,6 +1,6 @@
 # AionUi — map
 
-A walkable graph of this repo (fork of `iOfficeAI/AionUi`). Coverage is partial: desktop and web-host object cards, plus the launch processes. The UI layer (`packages/desktop/src/renderer`), `mobile/`, and `examples/` are not mapped. There is no `objects/web-cli/` card; the web-cli launch writeup is `processes/launch-web-cli.md`.
+A walkable graph of this repo (fork of `iOfficeAI/AionUi`). Coverage is partial: desktop and web-host object cards, plus the launch processes. The UI layer (`packages/desktop/src/renderer`) and `examples/` are not mapped. There is no `objects/web-cli/` card; the web-cli launch writeup is `processes/launch-web-cli.md`.
 
 ## Where things live
 
