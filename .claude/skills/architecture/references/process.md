@@ -4,45 +4,34 @@
 
 ```
 packages/desktop/src/process/
+├── backend/       # Resolve the external aioncore binary
 ├── bridge/        # IPC handlers — one file per domain
-│   ├── index.ts   # Registers all bridges
-│   └── *Bridge.ts # Individual bridge files
-├── services/      # Business logic services
-│   ├── cron/      # Complex service → subdirectory
-│   └── mcp-services/
-├── database/      # SQLite layer — schema, migrations, repositories
-├── task/          # Agent/task management — managers, factories
-├── utils/         # Main-process-only utilities
-└── i18n/          # Main-process i18n
+├── feedback/
+├── pet/           # Desktop pet window
+├── resources/     # Builtin MCP launchers (builtinMcp/)
+├── services/      # Business logic: database/, i18n/, skills/, updates
+├── startup/       # Boot, single-instance, quit cleanup
+└── utils/         # Main-process-only utilities (CDP, tray, storage, window)
 ```
+
+`aioncore` is not source here. The launcher lives in `packages/web-host/src/backend-launcher.ts`. WebUI static serving is `packages/web-host/src/static-server.ts`.
+
+There is no `process/agent`, `process/worker`, `process/channels`, `process/extensions`, `process/webserver`, or `WorkerProtocol.ts`.
 
 ## Naming Conventions
 
-| Type              | Pattern                         | Examples                          |
-| ----------------- | ------------------------------- | --------------------------------- |
-| Bridge            | `<domain>Bridge.ts` (camelCase) | `cronBridge.ts`, `webuiBridge.ts` |
-| Service           | `<Name>Service.ts` (PascalCase) | `CronService.ts`, `McpService.ts` |
-| Service interface | `I<Name>Service.ts`             | `IConversationService.ts`         |
-| Repository        | `<Name>Repository.ts`           | `SqliteConversationRepository.ts` |
-| Agent Manager     | `<Platform>AgentManager.ts`     | `AcpAgentManager.ts`              |
+| Type    | Pattern                         | Examples                           |
+| ------- | ------------------------------- | ---------------------------------- |
+| Bridge  | `<domain>Bridge.ts` (camelCase) | `webuiBridge.ts`, `themeBridge.ts` |
+| Service | `<Name>Service.ts` (PascalCase) | `autoUpdaterService.ts`            |
 
-All directories use lowercase (Node.js convention):
-
-```
-packages/desktop/src/process/
-├── bridge/           # lowercase
-├── services/         # lowercase
-│   ├── cron/         # lowercase
-│   └── mcp-services/ # lowercase (kebab-case for multi-word)
-├── database/         # lowercase
-└── task/             # lowercase
-```
+Directories stay lowercase.
 
 ## Adding a New IPC Bridge
 
 1. Create `packages/desktop/src/process/bridge/<domain>Bridge.ts`
 2. Register in `packages/desktop/src/process/bridge/index.ts`
-3. Expose channel in `packages/desktop/src/preload/`
+3. Expose the channel from `packages/desktop/src/preload/` (`main.ts`, or a pet preload)
 4. Add renderer-side types if needed
 
 ## Adding a New Service
@@ -55,19 +44,19 @@ packages/desktop/src/process/
 ### Pure Logic vs IO Separation
 
 - **Pure logic** (transformation, validation, formatting) → standalone functions, no `fs`/`db`/`net`
-- **IO operations** (file read, DB query, HTTP call) → thin wrappers in service class or repository
+- **IO operations** (file read, DB query, HTTP call) → thin wrappers in the service or repository
 - Service methods should receive IO results as parameters
 
 ### Dependency Injection
 
 ```typescript
-// ❌ Hard to test
-import { db } from '@process/database';
+// Hard to test
+import { db } from '@process/services/database';
 function getConversation(id: string) {
   return db.query('SELECT * FROM conversations WHERE id = ?', id);
 }
 
-// ✅ Easy to test
+// Easy to test
 function getConversation(repo: IConversationRepository, id: string) {
   return repo.findById(id);
 }
@@ -83,7 +72,7 @@ For existing code using direct imports, `vi.mock()` is acceptable. For new code,
 
 IPC bridge between main and renderer. Uses `contextBridge` to expose safe APIs.
 
-- All main ↔ renderer communication goes through this file
+- Entry files: `main.ts`, `petPreload.ts`, `petConfirmPreload.ts`, `petHitPreload.ts`. There is no `preload.ts`.
 - Only `contextBridge` and `ipcRenderer` APIs allowed
 - No DOM manipulation, no Node.js `fs`
 
@@ -94,25 +83,6 @@ Code imported by **both** main and renderer processes.
 - **Belongs**: shared types, API adapters, protocol converters, storage keys
 - **Does NOT belong**: React components → `renderer/`, Node.js-specific → `process/`
 
-### Agent (`packages/desktop/src/process/agent/`)
+### Web host (`packages/web-host/src/`)
 
-One directory per AI platform (lowercase): `acp/`, `codex/`, `gemini/`, `nanobot/`, `openclaw/`. Each has `index.ts` entry. Runs in main or worker process.
-
-### Worker (`packages/desktop/src/process/worker/`)
-
-```
-packages/desktop/src/process/worker/
-├── fork/              # Fork management
-├── <platform>.ts      # One file per agent platform (lowercase)
-├── WorkerProtocol.ts  # Protocol definition (PascalCase — it's a class)
-└── index.ts
-```
-
-### Other Modules
-
-| Module     | Location                                   | Purpose                                            |
-| ---------- | ------------------------------------------ | -------------------------------------------------- |
-| Channels   | `packages/desktop/src/process/channels/`   | Multi-channel messaging (Lark, DingTalk, Telegram) |
-| Extensions | `packages/desktop/src/process/extensions/` | Plugin loading, resolvers, sandbox                 |
-| WebServer  | `packages/desktop/src/process/webserver/`  | Express + WebSocket for WebUI                      |
-| Adapter    | `packages/desktop/src/common/adapter/`     | Platform adapters (browser vs main environment)    |
+`startWebHost` composes the aioncore launcher and the static server. See `packages/web-host/README.md`.

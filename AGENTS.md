@@ -2,7 +2,7 @@
 
 All contributors (human and AI) must follow [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. ([Chinese version](CONTRIBUTING.zh.md))
 
-> Agent map: see [map/CLAUDE.md](map/CLAUDE.md) for a walkable object/process graph of the desktop/web-host/web-cli startup path (what a change hits, cited to path:line). Partial coverage — UI/mobile/examples not mapped.
+> Agent map: see [map/AGENTS.md](map/AGENTS.md) for the desktop/web-host startup graph (what a change hits, cited to path:line). Partial coverage — UI, mobile, and examples are not mapped.
 
 ## Code Conventions
 
@@ -63,15 +63,16 @@ Two process types — never mix their APIs:
 | Renderer | `packages/desktop/src/renderer/` | No Node.js APIs |
 
 Cross-process communication must go through the IPC bridge (`packages/desktop/src/preload/`).
-See [docs/architecture/overview.md](docs/architecture/overview.md) for details.
+Startup map: [map/AGENTS.md](map/AGENTS.md).
 
 ## Testing
 
-**Framework**: Vitest 4 (`vitest.config.ts`). Project coverage target is ≥ 80%; ordinary changes should add focused tests for changed behavior.
+**Framework**: Vitest 4 (`vitest.config.ts`). Coverage include is `packages/desktop/src/**` and `packages/**/src/**`; thresholds in that config are 0. Ordinary changes should add focused tests for changed behavior.
 
 ```bash
-bun run test              # run all tests
-bun run test:coverage     # with coverage report
+bun run test              # vitest: unit + integration
+bun run test:e2e          # Playwright
+bun run test:coverage     # vitest with coverage
 ```
 
 See the `testing` skill (`.claude/skills/testing/SKILL.md`) for complete workflow and quality rules.
@@ -96,7 +97,7 @@ bun run format         # auto-format all files (oxfmt)
 bunx tsc --noEmit      # verify no type errors
 ```
 
-If your changes touch `packages/desktop/src/renderer/`, `locales/`, or `packages/desktop/src/common/config/i18n`, also run:
+If your changes touch `packages/desktop/src/renderer/`, `packages/desktop/src/common/i18n/locales/`, or `packages/desktop/src/common/config/i18n-config.json`, also run:
 
 ```bash
 bun run i18n:types
@@ -146,11 +147,11 @@ When opening a PR, fill in the PR body using [.github/pull_request_template.md](
 
 ## Skills Index
 
-| Skill            | Purpose                                                                     | Triggers                                                                                               |
-| ---------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **architecture** | File & directory structure conventions for all process types                | Creating files, adding modules, architectural decisions                                                |
-| **i18n**         | Internationalization workflow and standards                                 | Adding or changing user-facing text, modifying `locales/` or `packages/desktop/src/common/config/i18n` |
-| **testing**      | Testing workflow and quality standards                                      | Writing tests, changing runtime behavior, fixing bugs, or claiming behavior is verified                |
-| **bump-version** | Version bump workflow: update package.json, checks, branch, PR, tag release | Bumping version, `/bump-version`                                                                       |
+| Skill            | Purpose                                                                     | Triggers                                                                                                                                            |
+| ---------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **architecture** | File & directory structure conventions for all process types                | Creating files, adding modules, architectural decisions                                                                                             |
+| **i18n**         | Internationalization workflow and standards                                 | Adding or changing user-facing text, modifying `packages/desktop/src/common/i18n/locales/` or `packages/desktop/src/common/config/i18n-config.json` |
+| **testing**      | Testing workflow and quality standards                                      | Writing tests, changing runtime behavior, fixing bugs, or claiming behavior is verified                                                             |
+| **bump-version** | Version bump workflow: update package.json, checks, branch, PR, tag release | Bumping version, `/bump-version`                                                                                                                    |
 
 > Skills are located in `.claude/skills/` and contain project conventions that apply to **all** agents and contributors.

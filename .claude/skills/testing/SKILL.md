@@ -28,10 +28,9 @@ Standards and workflow for writing and running tests. Every feature must be test
 
 ```
 tests/
-├── unit/          # Individual functions, utilities, components
-├── integration/   # IPC, database, service interactions
-├── regression/    # Regression test cases
-└── e2e/           # End-to-end tests (Playwright, playwright.config.ts)
+├── unit/          # Vitest: functions, utilities, components
+├── integration/   # Vitest: IPC, database, service interactions
+└── e2e/           # Playwright (`playwright.config.ts`), `bun run test:e2e`
 ```
 
 ## Two Test Environments
@@ -85,15 +84,16 @@ List scenarios most likely to produce bugs. Write those first. Coverage is the o
 ### Step 3: Run Tests
 
 ```bash
-bun run test              # Run all tests (REQUIRED before every commit)
-bun run test:coverage     # Check coverage (before opening a PR)
+bun run test              # Vitest unit + integration (not Playwright)
+bun run test:e2e          # Playwright end-to-end
+bun run test:coverage     # Vitest with the coverage report
 ```
 
 ### Step 4: Verify Coverage
 
-**Coverage target**: ≥ 80% for all source files matched by `vitest.config.ts` → `coverage.include` (currently `src/**/*.{ts,tsx}` plus a few scripts).
+`vitest.config.ts` → `coverage.include` is `packages/desktop/src/**/*.{ts,tsx}` and `packages/**/src/**/*.{ts,tsx}`. Thresholds (`statements`, `branches`, `functions`, `lines`) are **0**.
 
-New source files are automatically included in coverage — no manual config changes needed. If a new file is accidentally excluded by a rule in `coverage.exclude`, remove it from the exclude list.
+New source files under those globs are included automatically. If a new file is accidentally excluded by `coverage.exclude`, remove it from the exclude list.
 
 ### Step 5: Update Existing Tests
 
@@ -121,11 +121,10 @@ Before submitting code:
 
 - [ ] New features have corresponding test cases
 - [ ] Modified logic has updated tests
-- [ ] `bun run test` passes
+- [ ] `bun run test` passes (add `bun run test:e2e` when the change is end-to-end)
 - [ ] Tests describe **behavior**, not implementation
 - [ ] At least one failure path per describe block
 - [ ] New source files are not accidentally excluded by `coverage.exclude`
-- [ ] `bun run test:coverage` meets ≥ 80% target
 
 ## Common Mistakes
 

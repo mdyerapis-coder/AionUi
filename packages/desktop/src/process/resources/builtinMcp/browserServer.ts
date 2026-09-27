@@ -10,23 +10,16 @@
  *
  * 为什么需要这个中间层：
  *
- * chrome-devtools-mcp 只接受命令行参数 `--browser-url`，不认环境变量。而我们的
- * CDP 端口是启动时动态决定的（默认 9230，被占用就往上找，多开几个实例端口各不同）。
- * 如果把端口直接写进 MCP 注册记录的 args 里，每次启动都得改写数据库里的这条记录，
- * 而且多实例共用一份注册表时必然写串。
+ * chrome-devtools-mcp 只接受 `--browser-url`。桥用 `listen(0)`，系统分配的端口经
+ * `AIONUI_CDP_ACTIVE_PORT` 传到这里（`configureChromium.ts`、`browserServerPort.ts`）。
+ * `AIONUI_CDP_PORT` 只是开关，不再表示端口号。把端口写进 MCP 注册记录会在每次启动时
+ * 改数据库，多实例还会写串。注册记录保持指向这个脚本，由它把环境变量译成 `--browser-url`。
  *
- * 所以注册记录保持不变（永远指向这个脚本），端口通过环境变量传进来，由这个脚本
- * 在运行时翻译成 `--browser-url` 参数再拉起真正的 chrome-devtools-mcp。
- * 注册记录是静态的，端口是动态的，两边都不用妥协。
- *
- * Why this indirection exists: chrome-devtools-mcp only accepts the CLI flag
- * `--browser-url` — it has no environment variable for it. Our CDP port is
- * resolved at launch (9230 by default, incremented when taken, distinct per
- * instance). Baking the port into the MCP registration's args would mean
- * rewriting that database record on every launch, and would race across
- * instances sharing one registry. Instead the registration stays static (always
- * pointing at this script) and the port arrives via environment variable, which
- * this script translates into `--browser-url` before spawning the real server.
+ * Why this indirection exists: chrome-devtools-mcp only accepts `--browser-url`.
+ * The bridge uses `listen(0)`; the OS-assigned port arrives in `AIONUI_CDP_ACTIVE_PORT`
+ * (`configureChromium.ts`, `browserServerPort.ts`). `AIONUI_CDP_PORT` is only an on/off
+ * switch. Baking the port into the MCP registration would rewrite that row on every
+ * launch and race across instances. The registration stays pointed at this script.
  */
 
 import { spawn } from 'node:child_process';

@@ -440,8 +440,7 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
   console.log('[AionUi] Creating main window...');
   const { x: windowX, y: windowY, width: windowWidth, height: windowHeight } = resolveInitialBounds();
 
-  // Get app icon for development mode (Windows/Linux need icon in BrowserWindow)
-  // In production, icons are set via forge.config.ts packagerConfig
+  // Dev-only window icon. Packaged icons: packages/desktop/electron-builder.yml.
   let devIcon: Electron.NativeImage | undefined;
   if (!app.isPackaged) {
     try {
@@ -655,8 +654,7 @@ const handleAppReady = async (): Promise<void> => {
     return;
   }
 
-  // Set dock icon in development mode on macOS
-  // In production, the icon is set via forge.config.ts packagerConfig.icon
+  // Dev-only dock icon. Packaged macOS icon: packages/desktop/electron-builder.yml (`mac.icon`).
   if (process.platform === 'darwin' && !app.isPackaged && app.dock) {
     try {
       const iconPath = path.join(process.cwd(), 'resources', 'app_dev.png');
@@ -870,14 +868,10 @@ const handleAppReady = async (): Promise<void> => {
     const resolvedPort = resolveWebUIPort(userConfigInfo.config, getSwitchValue);
     const allowRemote = resolveRemoteAccess(userConfigInfo.config, isRemoteMode);
     try {
-      // Inside Electron (`AionUi --webui` or packaged `aionui-web` mode that
-      // launches via the Electron shell), reuse the desktop app's data-dir so
-      // that conversations / cron jobs created in any path show up everywhere.
-      // Matches the desktop IPC path at line 493 above.
+      // Same data dir as backendManager.start() in this file (getDataPath / getSystemDir).
       const { getDataPath } = await import('./process/utils/utils');
       const { getSystemDir } = await import('./process/utils/initStorage');
       const sysDirWebUI = getSystemDir();
-      // M6: Switch to @aionui/web-host
       const handle = await startWebHost({
         app: {
           version: app.getVersion(),
@@ -894,9 +888,7 @@ const handleAppReady = async (): Promise<void> => {
         allowRemote,
         dataDir: getDataPath(),
         logDir: sysDirWebUI.logDir,
-        // Expose the same AIONUI_{CACHE,WORK,LOG}_DIR env the desktop IPC path
-        // passes at line 493, so /api/system/info reports the symlink workDir
-        // instead of the path-with-spaces userData root.
+        // Same cache/work/log dirs as backendManager.start() (initStorage.getSystemDir).
         dirs: {
           cacheDir: sysDirWebUI.cacheDir,
           workDir: sysDirWebUI.workDir,
@@ -1111,6 +1103,3 @@ app.on('will-quit', () => {
 app.on('quit', (_event, exitCode) => {
   console.log(`[AionUi] quit (exitCode=${exitCode})`);
 });
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.

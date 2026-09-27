@@ -75,7 +75,7 @@ bun run lint
 # 3. Type check (skip if no .ts/.tsx files changed)
 bunx tsc --noEmit
 
-# 4. i18n validation (only if you changed files in src/renderer/, locales/, or src/common/config/i18n/)
+# 4. i18n validation (only if you changed packages/desktop/src/renderer/, packages/desktop/src/common/i18n/locales/, or packages/desktop/src/common/config/i18n-config.json)
 bun run i18n:types
 node scripts/check-i18n.js
 

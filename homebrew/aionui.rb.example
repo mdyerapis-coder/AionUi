@@ -5,8 +5,8 @@
 # The actual cask is maintained in the official Homebrew repository:
 #   https://github.com/Homebrew/homebrew-cask/blob/master/Casks/a/aionui.rb
 #
-# Updates are automated via .github/workflows/bump-homebrew.yml which
-# creates PRs to the official repository when a new release is published.
+# This repo has no .github/workflows/bump-homebrew.yml.
+# The live cask is updated in Homebrew/homebrew-cask (livecheck: :github_latest).
 # =============================================================================
 
 cask "aionui" do

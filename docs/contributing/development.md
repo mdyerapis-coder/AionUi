@@ -170,17 +170,6 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 | `bun run build-deb`       | Build Linux (.deb) distributable                        |
 | `bun run build`           | Alias for `bun run build-mac`                           |
 
-### Standalone Server (non-Electron)
-
-| Command                            | Description                                                 |
-| ---------------------------------- | ----------------------------------------------------------- |
-| `bun run server:start`             | Run standalone server in development mode                   |
-| `bun run server:start:remote`      | Run standalone server with remote access                    |
-| `bun run server:start:prod`        | Run standalone server in production mode                    |
-| `bun run server:start:prod:remote` | Run standalone server in production mode with remote access |
-| `bun run server:resetpass`         | Reset password via standalone server CLI                    |
-| `bun run server:resetpass:prod`    | Reset password via standalone server CLI (production)       |
-
 ### Code Quality
 
 | Command                | Description                               |
@@ -193,14 +182,13 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 
 ### Testing
 
-| Command                     | Description                        |
-| --------------------------- | ---------------------------------- |
-| `bun run test`              | Run all unit tests (vitest)        |
-| `bun run test:watch`        | Run tests in watch mode            |
-| `bun run test:coverage`     | Run tests with coverage report     |
-| `bun run test:integration`  | Run integration tests              |
-| `bun run test:e2e`          | Run end-to-end tests (Playwright)  |
-| `bun run test:packaged:bun` | Run Bun packaged integration tests |
+| Command                    | Description                       |
+| -------------------------- | --------------------------------- |
+| `bun run test`             | Vitest unit and integration tests |
+| `bun run test:watch`       | Run tests in watch mode           |
+| `bun run test:coverage`    | Run tests with coverage report    |
+| `bun run test:integration` | Run integration tests             |
+| `bun run test:e2e`         | Playwright end-to-end tests       |
 
 ### Debug
 

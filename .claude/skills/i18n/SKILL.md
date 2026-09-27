@@ -14,10 +14,10 @@ Standards and workflow for internationalization. All user-visible text must use 
 
 ## IMPORTANT: Read Config First
 
-Before doing any i18n work, **always read `src/common/config/i18n-config.json`** to get the current list of supported languages and modules. Never assume a fixed number — languages and modules may have been added or removed since this skill was written.
+Before doing any i18n work, **always read `packages/desktop/src/common/config/i18n-config.json`** to get the current list of supported languages and modules. Never assume a fixed number — languages and modules may have been added or removed since this skill was written.
 
 ```bash
-cat src/common/config/i18n-config.json
+cat packages/desktop/src/common/config/i18n-config.json
 ```
 
 This file is the **single source of truth**. All scripts, runtime code, and this workflow depend on it.
@@ -95,7 +95,7 @@ t('cron.status.active'); // nested key in cron.json
 
 ## Adding New Text — Workflow
 
-### Step 1: Read `src/common/config/i18n-config.json`
+### Step 1: Read `packages/desktop/src/common/config/i18n-config.json`
 
 Get the current language list and module list. Do not skip this step.
 
@@ -120,7 +120,7 @@ Match the module to the feature area. If no module fits, consider whether a new 
 - [ ] `en-US/<module>.json` — reference language (added in Step 3)
 - [ ] `zh-CN/<module>.json` — added
 - [ ] `zh-TW/<module>.json` — added
-- [ ] Any other language listed in `src/common/config/i18n-config.json` → `supportedLanguages` — added
+- [ ] Any other language listed in `packages/desktop/src/common/config/i18n-config.json` → `supportedLanguages` — added
 
 A key missing from even one locale will cause `node scripts/check-i18n.js` to fail in CI.
 
@@ -131,7 +131,7 @@ import { useTranslation } from 'react-i18next';
 
 function MyComponent() {
   const { t } = useTranslation();
-  return <button>{t('common.save')}</button>;
+  return <span>{t('common.save')}</span>;
 }
 ```
 
@@ -151,7 +151,7 @@ node scripts/check-i18n.js  # Step B: validate structure, keys, and type sync
 
 ## Adding a New Module
 
-1. Add module name to `src/common/config/i18n-config.json` → `modules` array
+1. Add module name to `packages/desktop/src/common/config/i18n-config.json` → `modules` array
 2. Create `<module>.json` in **every** locale directory (read `supportedLanguages` to know which)
 3. Add import + export in each locale's `index.ts`
 4. Run `bun run i18n:types` to regenerate type definitions
@@ -223,7 +223,7 @@ Most terms can be auto-converted from zh-CN, but some need manual review:
 
 Before submitting code with new text:
 
-- [ ] Read `src/common/config/i18n-config.json` to get current languages and modules
+- [ ] Read `packages/desktop/src/common/config/i18n-config.json` to get current languages and modules
 - [ ] All user-visible text uses `t()` function
 - [ ] New keys added to **every** locale directory in `supportedLanguages`
 - [ ] No hardcoded Chinese/English in JSX

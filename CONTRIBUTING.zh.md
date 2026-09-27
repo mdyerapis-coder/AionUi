@@ -75,7 +75,7 @@ bun run lint
 # 3. 类型检查（如果没改 .ts/.tsx 文件可跳过）
 bunx tsc --noEmit
 
-# 4. i18n 校验（仅当修改了 src/renderer/、locales/ 或 src/common/config/i18n/ 下的文件时）
+# 4. i18n 校验（仅当修改了 packages/desktop/src/renderer/、packages/desktop/src/common/i18n/locales/ 或 packages/desktop/src/common/config/i18n-config.json 时）
 bun run i18n:types
 node scripts/check-i18n.js
 

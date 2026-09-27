@@ -1,5 +1,3 @@
-// src/common/platform/IPlatformServices.ts
-
 /**
  * Path resolution and app metadata.
  * Replaces all app.getPath() / app.getAppPath() / app.getName() / app.getVersion() calls.
