@@ -98,7 +98,7 @@ UI 主要组件（引用自 `index.tsx`）：
 >
 > `AssistantEditDrawer.tsx:280` 的 Name 输入 `disabled={activeAssistant?.isBuiltin}` —— Extension 助手的 `isBuiltin=false`，因此源码层面 Extension 的 Name 输入实际为 **enabled**，与 `index.tsx` 权限表的"Extension Name = no"矛盾。
 >
-> **E2E 测试原则**：以源码实际行为为准，断言 Extension Name input **not disabled**，并在 `discussion-log.zh.md` 记录此差异。Designer/Engineer 需评估是否为 bug 或需更新权限表。
+> **E2E 测试原则**：以源码实际行为为准，断言 Extension Name input **not disabled**。Designer/Engineer 需评估是否为 bug 或需更新权限表。
 
 #### 2.5.2 Drawer 布局与交互
 

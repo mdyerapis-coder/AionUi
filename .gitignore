@@ -105,12 +105,8 @@ out/
 **/.claude/settings.json
 .qwen/
 .qwen/*/
-.specify/scripts/
 .gemini/
 .gemini/*/
-
-# Keep important project documentation
-!.specify/memory/constitution.md
 
 # Temporary and backup files
 *.tmp

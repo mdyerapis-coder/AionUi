@@ -872,7 +872,6 @@ test.beforeAll(async ({ page }) => {
 | 文档            | 路径                                              | 状态                        |
 | --------------- | ------------------------------------------------- | --------------------------- |
 | Gate 1 需求文档 | `tests/e2e/docs/chat-aionrs/requirements.zh.md`   | ✅ 完成（本文档）           |
-| Gate 1 讨论记录 | `tests/e2e/docs/chat-aionrs/discussion-log.zh.md` | ✅ 完成（双 reviewer 审核） |
 | Gate 2 测试用例 | `tests/e2e/docs/chat-aionrs/test-cases.zh.md`     | ⏳ 待 designer 起草         |
 | Gate 3 实现映射 | `tests/e2e/docs/chat-aionrs/implementation.md`    | ⏳ 待 engineer 起草         |
 
