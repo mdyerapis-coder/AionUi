@@ -30,6 +30,8 @@
   "model": {
     "switchSuccess": "Modell erfolgreich gewechselt",
     "switchFailed": "Modellwechsel fehlgeschlagen",
+    "runtimeRestartFailed": "Das Modell wurde gespeichert, aber der Assistent ist nicht wieder online. Senden Sie erneut, oder wechseln Sie das Modell noch einmal, wenn keine Antwort kommt.",
+    "replyAfterSwitchTimeout": "Nach dem Wechsel kam keine Antwort. Der Durchgang wurde gestoppt, Sie können erneut senden.",
     "searchPlaceholder": "Modelle suchen",
     "noResults": "Keine passenden Modelle"
   },

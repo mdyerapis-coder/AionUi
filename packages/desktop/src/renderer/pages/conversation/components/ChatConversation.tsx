@@ -31,6 +31,14 @@ import GoogleModelSelector from '../platforms/gemini/GoogleModelSelector';
 import AionrsChat from '../platforms/aionrs/AionrsChat';
 import AionrsModelSelector from '../platforms/aionrs/AionrsModelSelector';
 import { useAionrsModelSelection } from '../platforms/aionrs/useAionrsModelSelection';
+import {
+  AIONRS_RUNTIME_ENSURE_TIMEOUT_MS,
+  AIONRS_TURN_SETTLE_TIMEOUT_MS,
+  armAionrsSwitchReply,
+  reinitializeAionrsAfterModelChange,
+  waitForTurnToSettle,
+  withTimeout,
+} from '../platforms/aionrs/aionrsRuntimeSwitch';
 import { useConversationRuntimeView } from '../runtime/useConversationRuntimeView';
 import { isLegacyReadOnlyConversationType } from '../utils/conversationRuntime';
 import { resolveConversationBackend } from '../utils/conversationAssistantIdentity';
@@ -149,21 +157,55 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
   sliderTitle,
 }) => {
   const runtimeView = useConversationRuntimeView(conversation.id);
+  const { t } = useTranslation();
   const onSelectModel = useCallback(
     async (_provider: IProvider, modelName: string) => {
       const selected = { ..._provider, use_model: modelName } as TProviderWithModel;
-      // Kill running agent on model switch — will be rebuilt with new model on next message
-      if (runtimeView.activeTurnId) {
-        const result = await ipcBridge.conversation.stop.invoke({
-          conversation_id: conversation.id,
-          turn_id: runtimeView.activeTurnId,
-        });
-        runtimeView.markStopAcknowledged(runtimeView.activeTurnId, result.runtime);
+      const turnId = runtimeView.activeTurnId;
+      // The backend kills the aionrs agent when `model` changes. Stop and wait
+      // until that turn has left `running` first, then rebuild the runtime so
+      // the next prompt is not sent at the session that kill just dropped.
+      const outcome = await reinitializeAionrsAfterModelChange({
+        activeTurnId: turnId,
+        blockBecauseBusy: runtimeView.isProcessing && !turnId,
+        stopTurn: async (activeTurnId) => {
+          const result = await ipcBridge.conversation.stop.invoke({
+            conversation_id: conversation.id,
+            turn_id: activeTurnId,
+          });
+          runtimeView.markStopAcknowledged(activeTurnId, result.runtime);
+        },
+        waitUntilIdle: (activeTurnId) =>
+          waitForTurnToSettle({
+            turnId: activeTurnId,
+            timeoutMs: AIONRS_TURN_SETTLE_TIMEOUT_MS,
+            readRuntime: async () => {
+              const current = await ipcBridge.conversation.get.invoke({ id: conversation.id });
+              const runtime = current.runtime;
+              if (!runtime) return null;
+              return { isProcessing: runtime.is_processing, turnId: runtime.turn_id };
+            },
+          }),
+        updateModel: async () =>
+          Boolean(await ipcBridge.conversation.update.invoke({ id: conversation.id, updates: { model: selected } })),
+        ensureRuntime: () =>
+          withTimeout(
+            ipcBridge.conversation.ensureRuntime
+              .invoke({ conversation_id: conversation.id })
+              .then((): void => undefined),
+            AIONRS_RUNTIME_ENSURE_TIMEOUT_MS,
+            new Error('aionrs runtime ensure timed out')
+          ),
+      });
+      if (outcome.status === 'updated') {
+        armAionrsSwitchReply(conversation.id);
+        if (!outcome.runtimeReady) Message.warning(t('agent.model.runtimeRestartFailed'));
+        return true;
       }
-      const ok = await ipcBridge.conversation.update.invoke({ id: conversation.id, updates: { model: selected } });
-      return Boolean(ok);
+      if (outcome.status === 'busy') Message.error(t('agent.model.switchFailed'));
+      return false;
     },
-    [conversation.id, runtimeView]
+    [conversation.id, runtimeView, t]
   );
 
   const modelSelection = useAionrsModelSelection({
@@ -181,7 +223,6 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
   // Mobile: model selection moved into the sendbox `+` action sheet to free up
   // header space; the dropdown stays available on desktop and tablets ≥768px.
   const isMobile = Boolean(layout?.isMobile);
-  const { t } = useTranslation();
   const runtimeConfig = useAcpConfigOptions({
     conversation_id: conversation.id,
     enabled: !isMobile,

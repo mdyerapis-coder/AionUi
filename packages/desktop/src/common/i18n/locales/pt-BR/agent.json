@@ -30,6 +30,8 @@
   "model": {
     "switchSuccess": "Modelo alterado com sucesso",
     "switchFailed": "Falha ao alternar o modelo",
+    "runtimeRestartFailed": "O modelo foi salvo, mas o assistente não voltou. Envie de novo ou troque o modelo outra vez se a resposta não chegar.",
+    "replyAfterSwitchTimeout": "Nenhuma resposta chegou após a troca. A vez foi interrompida para você enviar de novo.",
     "searchPlaceholder": "Buscar modelos",
     "noResults": "Nenhum modelo correspondente"
   },

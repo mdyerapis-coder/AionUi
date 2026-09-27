@@ -16,6 +16,10 @@ import { buildTeamRetryStartHandler } from './components/teamSendRuntime';
 import AcpModelSelector, { type AcpWarmupStatus } from '@/renderer/components/agent/AcpModelSelector';
 import AionrsModelSelector from '@/renderer/pages/conversation/platforms/aionrs/AionrsModelSelector';
 import { useAionrsModelSelection } from '@/renderer/pages/conversation/platforms/aionrs/useAionrsModelSelection';
+import {
+  armAionrsSwitchReply,
+  reinitializeAionrsAfterModelChange,
+} from '@/renderer/pages/conversation/platforms/aionrs/aionrsRuntimeSwitch';
 import { CronJobManager } from '@/renderer/pages/cron';
 import { resolveCronJobId } from '@/renderer/pages/cron/cronUtils';
 import TeamTabs from './components/TeamTabs';
@@ -77,8 +81,14 @@ const AionrsHeaderModelSelector: React.FC<{ conversation_id: string; initialMode
   const onSelectModel = useCallback(
     async (_provider: IProvider, modelName: string) => {
       const selected = { ..._provider, use_model: modelName } as TProviderWithModel;
-      const ok = await ipcBridge.conversation.update.invoke({ id: conversation_id, updates: { model: selected } });
-      return Boolean(ok);
+      const outcome = await reinitializeAionrsAfterModelChange({
+        activeTurnId: null,
+        updateModel: async () =>
+          Boolean(await ipcBridge.conversation.update.invoke({ id: conversation_id, updates: { model: selected } })),
+      });
+      if (outcome.status !== 'updated') return false;
+      armAionrsSwitchReply(conversation_id);
+      return true;
     },
     [conversation_id]
   );

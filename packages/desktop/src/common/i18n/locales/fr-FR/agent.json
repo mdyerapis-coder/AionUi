@@ -29,7 +29,9 @@
   },
   "model": {
     "switchSuccess": "Le modèle a changé avec succès",
-    "switchFailed": "Échec du changement de modèle"
+    "switchFailed": "Échec du changement de modèle",
+    "runtimeRestartFailed": "Le modèle a été enregistré, mais l’assistant n’est pas revenu en ligne. Renvoyez un message, ou changez encore de modèle si aucune réponse n’arrive.",
+    "replyAfterSwitchTimeout": "Aucune réponse après le changement. Le tour a été arrêté pour que vous puissiez renvoyer."
   },
   "config": {
     "setting": "Application du paramètre...",

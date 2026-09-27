@@ -30,6 +30,8 @@
   "model": {
     "switchSuccess": "モデルを切り替えました",
     "switchFailed": "モデルの切り替えに失敗しました",
+    "runtimeRestartFailed": "モデルは保存されましたが、アシスタントが復帰しませんでした。もう一度送信してください。返信が来ない場合は、モデルを再度切り替えてください。",
+    "replyAfterSwitchTimeout": "切り替え後に返信が届きませんでした。このターンを停止したので、再送信できます。",
     "searchPlaceholder": "モデルを検索",
     "noResults": "一致するモデルがありません"
   },
