@@ -1,0 +1,111 @@
+/**
+ * @license
+ * Copyright 2025 AionUi (aionui.com)
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Dark theme for diff2html markup rendered by DiffViewer.
+ * Anchored to this module's root plus .d2h-dark-color-scheme so the rules
+ * cannot restyle other screens. Library classes stay global because
+ * diff2html injects them as HTML. */
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-file-wrapper) {
+  border-color: var(--bg-3);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-file-header) {
+  background-color: var(--bg-2) !important;
+  border-color: var(--bg-3);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-file-name) {
+  color: var(--text-primary);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-diff-table),
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-diff-tbody) {
+  background-color: var(--bg-1);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-code-linenumber) {
+  background-color: var(--bg-2);
+  color: var(--text-secondary);
+  border-color: var(--bg-3);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-code-line) {
+  color: var(--text-primary);
+  background-color: var(--bg-1);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-info) {
+  background-color: var(--bg-2);
+  color: var(--text-secondary);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-emptyplaceholder) {
+  background-color: var(--bg-2);
+  border-color: var(--bg-3);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-ins) {
+  background-color: rgba(35, 195, 67, 0.15);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-ins) :global(.d2h-code-line) {
+  background-color: rgba(35, 195, 67, 0.15);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-ins.d2h-change) {
+  background-color: rgba(35, 195, 67, 0.25);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-ins.d2h-change) :global(.d2h-code-line) {
+  background-color: rgba(35, 195, 67, 0.25);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-del) {
+  background-color: rgba(245, 63, 63, 0.15);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-del) :global(.d2h-code-line) {
+  background-color: rgba(245, 63, 63, 0.15);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-del.d2h-change) {
+  background-color: rgba(245, 63, 63, 0.25);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-del.d2h-change) :global(.d2h-code-line) {
+  background-color: rgba(245, 63, 63, 0.25);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-code-line) :global(ins) {
+  background-color: rgba(35, 195, 67, 0.4);
+  color: var(--text-primary);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-code-line) :global(del) {
+  background-color: rgba(245, 63, 63, 0.4);
+  color: var(--text-primary);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-code-side-linenumber) {
+  background-color: var(--bg-2);
+  color: var(--text-secondary);
+  border-color: var(--bg-3);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-code-side-line) {
+  background-color: var(--bg-1);
+  color: var(--text-primary);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-cntx) {
+  background-color: var(--bg-1);
+}
+
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-cntx) :global(.d2h-code-line),
+.diffRoot:global(.d2h-dark-color-scheme) :global(.d2h-cntx) :global(.d2h-code-side-line) {
+  background-color: var(--bg-1);
+}

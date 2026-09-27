@@ -11,6 +11,7 @@
   "downloadMarkdown": "Markdown Dosyasını İndir",
   "downloadCode": "{{language}} Dosyasını İndir",
   "downloadDiff": "Diff Dosyasını İndir",
+  "sideBySideLabel": "Yan yana",
   "addToChat": "Sohbete Ekle",
   "openSplitScreen": "Bölünmüş Ekranı Aç",
   "closeSplitScreen": "Bölünmüş Ekranı Kapat",

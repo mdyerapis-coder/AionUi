@@ -11,6 +11,7 @@
   "downloadMarkdown": "دانلود فایل Markdown",
   "downloadCode": "دانلود فایل {{language}}",
   "downloadDiff": "دانلود فایل Diff",
+  "sideBySideLabel": "نمایش کنار هم",
   "addToChat": "افزودن به چت",
   "openSplitScreen": "باز کردن صفحه تقسیم‌شده",
   "closeSplitScreen": "بستن صفحه تقسیم‌شده",

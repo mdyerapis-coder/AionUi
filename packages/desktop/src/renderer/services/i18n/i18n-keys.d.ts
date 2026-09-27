@@ -1311,6 +1311,7 @@ export type I18nKey =
   | 'preview.save.tooltip'
   | 'preview.saveAndClose'
   | 'preview.saveConflict'
+  | 'preview.sideBySideLabel'
   | 'preview.source'
   | 'preview.unsavedChangesMessage'
   | 'preview.unsavedChangesTitle'

@@ -11,6 +11,7 @@
   "downloadMarkdown": "Завантажити файл Markdown",
   "downloadCode": "Завантажити файл {{language}}",
   "downloadDiff": "Завантажити файл Diff",
+  "sideBySideLabel": "Поруч",
   "addToChat": "Додати до чату",
   "openSplitScreen": "Відкрити розділений екран",
   "closeSplitScreen": "Закрити розділений екран",

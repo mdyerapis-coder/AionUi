@@ -4,17 +4,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { PreviewMetadata } from '../../context/PreviewContext';
+import type { PreviewMetadata } from '../../../context/PreviewContext';
 import { useTextSelection } from '@/renderer/hooks/ui/useTextSelection';
 import { Checkbox } from '@arco-design/web-react';
 import classNames from 'classnames';
 import { html } from 'diff2html';
 import 'diff2html/bundles/css/diff2html.min.css';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import styles from './DiffViewer.module.css';
 import ReactDOM from 'react-dom';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { vs, vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import SelectionToolbar from '../renderers/SelectionToolbar';
+import SelectionToolbar from '../../renderers/SelectionToolbar';
 import { useTranslation } from 'react-i18next';
 
 interface DiffPreviewProps {
@@ -144,7 +145,7 @@ const DiffPreview: React.FC<DiffPreviewProps> = ({
                 checked={sideBySide}
                 onChange={(value) => setSideBySide(value)}
               >
-                <span className='text-12px text-t-secondary'>side-by-side</span>
+                <span className='text-12px text-t-secondary'>{t('preview.sideBySideLabel')}</span>
               </Checkbox>
             )}
             <div
@@ -187,6 +188,7 @@ const DiffPreview: React.FC<DiffPreviewProps> = ({
           <div
             ref={diffContainerRef}
             className={classNames(
+              styles.diffRoot,
               'w-full max-w-full min-w-0',
               '![&_.line-num1]:hidden ![&_.line-num2]:w-30px',
               '[&_td:first-child]:w-40px ![&_td:nth-child(2)>div]:pl-45px',
@@ -206,7 +208,7 @@ const DiffPreview: React.FC<DiffPreviewProps> = ({
         operatorRef.current &&
         ReactDOM.createPortal(
           <Checkbox className='whitespace-nowrap' checked={sideBySide} onChange={(value) => setSideBySide(value)}>
-            <span className='whitespace-nowrap'>side-by-side</span>
+            <span className='whitespace-nowrap'>{t('preview.sideBySideLabel')}</span>
           </Checkbox>,
           operatorRef.current
         )}

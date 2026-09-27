@@ -11,6 +11,7 @@
   "downloadMarkdown": "下載 Markdown 檔案",
   "downloadCode": "下載 {{language}} 檔案",
   "downloadDiff": "下載 Diff 檔案",
+  "sideBySideLabel": "並排顯示",
   "addToChat": "加入對話",
   "openSplitScreen": "開啟分屏",
   "closeSplitScreen": "關閉分屏",
