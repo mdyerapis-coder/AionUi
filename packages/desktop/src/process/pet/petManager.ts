@@ -10,7 +10,7 @@ import i18n from '@process/services/i18n';
 import { PetStateMachine } from './petStateMachine';
 import { PetIdleTicker } from './petIdleTicker';
 import { PetEventBridge } from './petEventBridge';
-import { setPetNotifyHook } from '../../common/adapter/main';
+import { startPetRealtimeClient, type PetRealtimeClient } from './petRealtime';
 import {
   initPetConfirmManager,
   updateAnchorBounds,
@@ -44,6 +44,7 @@ let petHitWindow: BrowserWindow | null = null;
 let stateMachine: PetStateMachine | null = null;
 let idleTicker: PetIdleTicker | null = null;
 let eventBridge: PetEventBridge | null = null;
+let petRealtime: PetRealtimeClient | null = null;
 let currentSize: PetSize = 280;
 let dragTimer: ReturnType<typeof setInterval> | null = null;
 let dragWatchdog: ReturnType<typeof setTimeout> | null = null;
@@ -184,11 +185,9 @@ export function createPetWindow(): void {
 
   idleTicker.setPetBounds(x, y, currentSize, currentSize);
 
-  setPetNotifyHook((name: string, data: unknown) => {
-    if (eventBridge) {
-      eventBridge.handleBridgeMessage(name, data);
-    }
-  });
+  // Backend agent frames travel on `/ws`. The renderer is the only other
+  // subscriber; bridge.adapter.emit never sees them.
+  petRealtime = startPetRealtimeClient({ bridge: eventBridge });
 
   idleTicker.start();
   registerIpcHandlers();
@@ -219,6 +218,12 @@ export function destroyPetWindow(): void {
   // Destroy confirm manager
   destroyPetConfirmManager();
 
+  // Quit cleanup calls destroyPetWindow(), which closes this socket too.
+  if (petRealtime) {
+    petRealtime.close();
+    petRealtime = null;
+  }
+
   if (eventBridge) {
     eventBridge.dispose();
     eventBridge = null;
@@ -234,7 +239,6 @@ export function destroyPetWindow(): void {
     stateMachine = null;
   }
 
-  setPetNotifyHook(null);
   unregisterIpcHandlers();
 
   if (petHitWindow && !petHitWindow.isDestroyed()) {
