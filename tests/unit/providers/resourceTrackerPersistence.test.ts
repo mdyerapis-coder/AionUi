@@ -34,8 +34,11 @@ describe('resource tracker persistence', () => {
 
     expect(await vault.get('openrouter')).toBe('top-secret-value');
     expect(await fs.readFile(path.join(directory, 'credentials.json'), 'utf8')).not.toContain('top-secret-value');
-    expect((await fs.stat(path.join(directory, 'credentials.json'))).mode & 0o777).toBe(0o600);
-    expect((await fs.stat(path.join(directory, '.vault-key'))).mode & 0o777).toBe(0o600);
+    // Windows has no POSIX permission bits; Node reports 0666 for a writable file.
+    if (process.platform !== 'win32') {
+      expect((await fs.stat(path.join(directory, 'credentials.json'))).mode & 0o777).toBe(0o600);
+      expect((await fs.stat(path.join(directory, '.vault-key'))).mode & 0o777).toBe(0o600);
+    }
   });
 
   it('fails closed when encrypted credential data is tampered with', async () => {
