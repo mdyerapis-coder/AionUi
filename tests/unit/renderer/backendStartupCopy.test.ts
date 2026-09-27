@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 // AC-6 + AC-4/AC-5 copy guarantees, validated against the real locale resources.
 const REPO_ROOT = path.resolve(__dirname, '../../..');
 const CONFIG_PATH = path.join(REPO_ROOT, 'packages/desktop/src/common/config/i18n-config.json');
-const LOCALES_DIR = path.join(REPO_ROOT, 'packages/desktop/src/renderer/services/i18n/locales');
+const LOCALES_DIR = path.join(REPO_ROOT, 'packages/desktop/src/common/i18n/locales');
 
 const config = JSON.parse(readFileSync(CONFIG_PATH, 'utf8')) as { supportedLanguages: string[] };
 

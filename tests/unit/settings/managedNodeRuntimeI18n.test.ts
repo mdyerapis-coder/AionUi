@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 
 function localeRoot(): URL {
-  return new URL('../../../packages/desktop/src/renderer/services/i18n/locales/', import.meta.url);
+  return new URL('../../../packages/desktop/src/common/i18n/locales/', import.meta.url);
 }
 
 function settingsLanguages(): string[] {
@@ -23,16 +23,13 @@ function loadSettingsLocale(language: string): Record<string, string> {
 }
 
 function loadCommonLocale(language: string): Record<string, unknown> {
-  const url = new URL(
-    `../../../packages/desktop/src/renderer/services/i18n/locales/${language}/common.json`,
-    import.meta.url
-  );
+  const url = new URL(`../../../packages/desktop/src/common/i18n/locales/${language}/common.json`, import.meta.url);
   return JSON.parse(readFileSync(url, 'utf8')) as Record<string, unknown>;
 }
 
 function loadConversationLocale(language: string): Record<string, unknown> {
   const url = new URL(
-    `../../../packages/desktop/src/renderer/services/i18n/locales/${language}/conversation.json`,
+    `../../../packages/desktop/src/common/i18n/locales/${language}/conversation.json`,
     import.meta.url
   );
   return JSON.parse(readFileSync(url, 'utf8')) as Record<string, unknown>;

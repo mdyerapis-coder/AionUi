@@ -25,17 +25,16 @@ This file is the **single source of truth**. All scripts, runtime code, and this
 ## File Structure
 
 ```
-src/common/config/i18n-config.json              # Single source of truth: languages, modules
-src/renderer/i18n/
-├── index.ts                             # i18next configuration
-├── i18n-keys.d.ts                       # AUTO-GENERATED — do not edit manually
-└── locales/
-    ├── <lang>/                          # One directory per language in i18n-config.json
-    │   ├── index.ts                     # Barrel import for all modules
-    │   ├── common.json                  # One JSON per module in i18n-config.json
-    │   ├── conversation.json
-    │   └── ...
-    └── ...
+packages/desktop/src/common/config/i18n-config.json   # Single source of truth: languages, modules
+packages/desktop/src/common/i18n/locales/             # Locale JSON shared by main and renderer
+├── <lang>/                                           # One directory per language in i18n-config.json
+│   ├── index.ts                                      # Barrel import for all modules
+│   ├── common.json                                   # One JSON per module in i18n-config.json
+│   ├── conversation.json
+│   └── ...
+packages/desktop/src/renderer/services/i18n/
+├── index.ts                                          # Renderer i18next configuration
+└── i18n-keys.d.ts                                    # AUTO-GENERATED — do not edit manually
 ```
 
 ### Key Facts
@@ -105,7 +104,7 @@ Get the current language list and module list. Do not skip this step.
 Before adding a new key, search for similar existing keys:
 
 ```bash
-grep -r "keyword" src/renderer/i18n/locales/en-US/
+grep -r "keyword" packages/desktop/src/common/i18n/locales/en-US/
 ```
 
 Reuse `common.*` keys when possible.

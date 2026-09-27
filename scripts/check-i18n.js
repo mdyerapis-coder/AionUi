@@ -11,7 +11,7 @@ const path = require('path');
 const { REQUIRED_MODULES, collectReferenceKeys, getAllKeys } = require('./generate-i18n-types');
 const i18nConfig = require('../packages/desktop/src/common/config/i18n-config.json');
 
-const LOCALES_DIR = path.resolve(__dirname, '../packages/desktop/src/renderer/services/i18n/locales');
+const LOCALES_DIR = path.resolve(__dirname, '../packages/desktop/src/common/i18n/locales');
 const I18N_KEYS_DTS = path.resolve(__dirname, '../packages/desktop/src/renderer/services/i18n/i18n-keys.d.ts');
 const RENDERER_DIR = path.resolve(__dirname, '../packages/desktop/src/renderer');
 const SUPPORTED_LANGUAGES = i18nConfig.supportedLanguages;

@@ -13,7 +13,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { executeImageGeneration } from '@/common/chat/imageGenCore';
+import { executeImageGeneration } from './imageGenCore';
 import { BUILTIN_IMAGE_GEN_ID, BUILTIN_IMAGE_GEN_NAME, type TProviderWithModel } from '@/common/config/storage';
 
 // Read provider config from environment variables

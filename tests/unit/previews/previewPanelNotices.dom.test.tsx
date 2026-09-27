@@ -24,7 +24,7 @@ import React from 'react';
 import { Message } from '@arco-design/web-react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import enPreview from '@/renderer/services/i18n/locales/en-US/preview.json';
+import enPreview from '@/common/i18n/locales/en-US/preview.json';
 
 const mocks = vi.hoisted(() => ({
   readContent: vi.fn(),

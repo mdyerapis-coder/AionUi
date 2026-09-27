@@ -15,10 +15,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const enConversation = JSON.parse(
-  readFileSync(
-    path.join(process.cwd(), 'packages/desktop/src/renderer/services/i18n/locales/en-US/conversation.json'),
-    'utf8'
-  )
+  readFileSync(path.join(process.cwd(), 'packages/desktop/src/common/i18n/locales/en-US/conversation.json'), 'utf8')
 );
 
 const i18nConfig = JSON.parse(
@@ -497,7 +494,7 @@ describe('MessageTips — FeedbackButton wiring', () => {
 
 describe('agent error locale copy', () => {
   it('defines empty-turn info tip copy in every locale', () => {
-    const localeDir = path.join(process.cwd(), 'packages/desktop/src/renderer/services/i18n/locales');
+    const localeDir = path.join(process.cwd(), 'packages/desktop/src/common/i18n/locales');
 
     for (const localeName of supportedLocaleNames) {
       const locale = JSON.parse(readFileSync(path.join(localeDir, localeName, 'conversation.json'), 'utf8'));
@@ -510,7 +507,7 @@ describe('agent error locale copy', () => {
   });
 
   it('defines title and body copy for newly classified agent error codes in every locale', () => {
-    const localeDir = path.join(process.cwd(), 'packages/desktop/src/renderer/services/i18n/locales');
+    const localeDir = path.join(process.cwd(), 'packages/desktop/src/common/i18n/locales');
 
     for (const localeName of supportedLocaleNames) {
       const locale = JSON.parse(readFileSync(path.join(localeDir, localeName, 'conversation.json'), 'utf8'));
@@ -528,7 +525,7 @@ describe('agent error locale copy', () => {
   });
 
   it('keeps agent error copy localized outside English and Chinese locales', () => {
-    const localeDir = path.join(process.cwd(), 'packages/desktop/src/renderer/services/i18n/locales');
+    const localeDir = path.join(process.cwd(), 'packages/desktop/src/common/i18n/locales');
     const localeNames = supportedLocaleNames.filter((localeName) => !['en-US', 'zh-CN', 'zh-TW'].includes(localeName));
 
     for (const localeName of localeNames) {
@@ -548,7 +545,7 @@ describe('agent error locale copy', () => {
   });
 
   it('does not label app-side errors as direct AionUi ownership', () => {
-    const localeDir = path.join(process.cwd(), 'packages/desktop/src/renderer/services/i18n/locales');
+    const localeDir = path.join(process.cwd(), 'packages/desktop/src/common/i18n/locales');
 
     for (const localeName of supportedLocaleNames) {
       const locale = JSON.parse(readFileSync(path.join(localeDir, localeName, 'conversation.json'), 'utf8'));
@@ -566,7 +563,7 @@ describe('agent error locale copy', () => {
   });
 
   it('does not describe ACP protocol fallback errors as app recognition bugs', () => {
-    const localeDir = path.join(process.cwd(), 'packages/desktop/src/renderer/services/i18n/locales');
+    const localeDir = path.join(process.cwd(), 'packages/desktop/src/common/i18n/locales');
 
     for (const localeName of supportedLocaleNames) {
       const locale = JSON.parse(readFileSync(path.join(localeDir, localeName, 'conversation.json'), 'utf8'));
@@ -579,7 +576,7 @@ describe('agent error locale copy', () => {
   });
 
   it('does not add speculative remediation to ACP protocol error copy', () => {
-    const localeDir = path.join(process.cwd(), 'packages/desktop/src/renderer/services/i18n/locales');
+    const localeDir = path.join(process.cwd(), 'packages/desktop/src/common/i18n/locales');
     const protocolCodes = [
       'USER_AGENT_SESSION_NOT_FOUND',
       'USER_AGENT_UNSUPPORTED_METHOD',
