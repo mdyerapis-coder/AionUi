@@ -92,7 +92,7 @@
 3. Builtin Skills 无删除按钮（只能 Checkbox 取消勾选）
 4. F-SC-01/F-SC-02（删除弹窗需求）在补充测试范围内不可测
 
-**记录位置**：`discussion-log.zh.md` — 2026-04-21 · 门 3 · Designer 第 3 轮修订
+**记录日期**：2026-04-21 · 门 3 · Designer 第 3 轮修订
 
 ---
 
@@ -184,7 +184,6 @@ P1-16 添加 skip 逻辑：新 assistant 无 Builtin Skills 时跳过测试。
 - ✅ test-cases.zh.md v1.3 与实现 100% 对应
 - ✅ 37/37 活跃用例全部通过（0 skip/fixme/only）
 - ✅ 173 张截图覆盖所有测试场景
-- ✅ discussion-log.zh.md 完整记录 3 轮修订历史
 - ✅ 无重大实现偏差
 
 ---
