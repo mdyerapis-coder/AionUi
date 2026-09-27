@@ -44,47 +44,6 @@ export interface IPlatformPaths {
 }
 
 /**
- * A running worker child process.
- *
- * Covers the subset of Electron.UtilityProcess / Node.js ChildProcess APIs
- * used by ForkTask. When migrating ForkTask, change fcp field type from
- * UtilityProcess to IWorkerProcess.
- */
-export interface IWorkerProcess {
-  postMessage(message: unknown): void;
-  on(event: string, handler: (...args: unknown[]) => void): this;
-  kill(): void;
-}
-
-/**
- * Worker process factory.
- * Replaces utilityProcess.fork() in Electron and child_process.fork() in Node.js.
- */
-export interface IWorkerProcessFactory {
-  fork(modulePath: string, args: string[], options: { cwd?: string; env?: Record<string, string> }): IWorkerProcess;
-}
-
-/**
- * System sleep/suspension control. Replaces powerSaveBlocker.
- *
- * Callers MUST guard against null before calling allowSleep:
- *   const id = power.preventSleep()
- *   if (id !== null) power.allowSleep(id)
- */
-export interface IPowerManager {
-  /** Returns a handle ID, or null if not supported (non-Electron mode). */
-  preventSleep(): number | null;
-  /** id may be null (returned by non-Electron preventSleep); safe no-op in that case. */
-  allowSleep(id: number | null): void;
-  /**
-   * Prevent the display (and system) from sleeping.
-   * Uses 'prevent-display-sleep' mode — stronger than preventSleep().
-   * Returns a handle ID, or null if not supported.
-   */
-  preventDisplaySleep(): number | null;
-}
-
-/**
  * System notification. Replaces Electron Notification class.
  *
  * In non-Electron mode: silent no-op (intentional degradation).
@@ -108,8 +67,6 @@ export interface INetworkService {
 /** Top-level aggregate injected at process startup. */
 export interface IPlatformServices {
   paths: IPlatformPaths;
-  worker: IWorkerProcessFactory;
-  power: IPowerManager;
   notification: INotificationService;
   network: INetworkService;
 }

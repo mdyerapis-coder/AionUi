@@ -9,7 +9,6 @@ import { ipcMain } from 'electron';
 
 import { bridge } from '@/common/platform/bridge';
 import { ADAPTER_BRIDGE_EVENT_KEY } from './constant';
-import { registerWebSocketBroadcaster, getBridgeEmitter, setBridgeEmitter, broadcastToAll } from './registry';
 
 /**
  * Bridge event data structure for IPC communication
@@ -21,8 +20,6 @@ interface BridgeEventData {
 }
 
 const adapterWindowList: Array<BrowserWindow> = [];
-
-export { registerWebSocketBroadcaster, getBridgeEmitter };
 
 let petNotifyHook: ((name: string, data: unknown) => void) | null = null;
 
@@ -83,13 +80,8 @@ bridge.adapter({
       }
       win.webContents.send(ADAPTER_BRIDGE_EVENT_KEY, serialized);
     }
-    // 2. Also broadcast to all WebSocket clients
-    broadcastToAll(name, data);
   },
   on(emitter) {
-    // 保存 emitter 引用供 WebSocket 处理使用 / Save emitter reference for WebSocket handling
-    setBridgeEmitter(emitter);
-
     ipcMain.handle(ADAPTER_BRIDGE_EVENT_KEY, (_event, info) => {
       const { name, data } = JSON.parse(info) as BridgeEventData;
       return Promise.resolve(emitter.emit(name, data));
