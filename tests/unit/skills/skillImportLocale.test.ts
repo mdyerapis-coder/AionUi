@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const localeDir = path.join(process.cwd(), 'packages/desktop/src/renderer/services/i18n/locales');
+const localeDir = path.join(process.cwd(), 'packages/desktop/src/common/i18n/locales');
 const legacyImportHelpKeys = [
   'importHelp',
   'importHelpSourceLabel',

@@ -16,18 +16,18 @@ import {
 
 // Static imports – Vite bundles these into the main-process output so they
 // work correctly in both development and production (no fs.readFile needed).
-import enUS from '@renderer/services/i18n/locales/en-US/index';
-import zhCN from '@renderer/services/i18n/locales/zh-CN/index';
-import jaJP from '@renderer/services/i18n/locales/ja-JP/index';
-import zhTW from '@renderer/services/i18n/locales/zh-TW/index';
-import koKR from '@renderer/services/i18n/locales/ko-KR/index';
-import trTR from '@renderer/services/i18n/locales/tr-TR/index';
-import ruRU from '@renderer/services/i18n/locales/ru-RU/index';
-import ukUA from '@renderer/services/i18n/locales/uk-UA/index';
-import ptBR from '@renderer/services/i18n/locales/pt-BR/index';
-import deDE from '@renderer/services/i18n/locales/de-DE/index';
-import esES from '@renderer/services/i18n/locales/es-ES/index';
-import faIR from '@renderer/services/i18n/locales/fa-IR/index';
+import enUS from '@/common/i18n/locales/en-US/index';
+import zhCN from '@/common/i18n/locales/zh-CN/index';
+import jaJP from '@/common/i18n/locales/ja-JP/index';
+import zhTW from '@/common/i18n/locales/zh-TW/index';
+import koKR from '@/common/i18n/locales/ko-KR/index';
+import trTR from '@/common/i18n/locales/tr-TR/index';
+import ruRU from '@/common/i18n/locales/ru-RU/index';
+import ukUA from '@/common/i18n/locales/uk-UA/index';
+import ptBR from '@/common/i18n/locales/pt-BR/index';
+import deDE from '@/common/i18n/locales/de-DE/index';
+import esES from '@/common/i18n/locales/es-ES/index';
+import faIR from '@/common/i18n/locales/fa-IR/index';
 
 // All locale data keyed by language code.
 // NOTE: When adding a new language, add a static import above and an entry here.

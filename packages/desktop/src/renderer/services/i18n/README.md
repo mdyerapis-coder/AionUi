@@ -10,11 +10,11 @@
 ## 文件结构
 
 ```
-src/renderer/i18n/
+packages/desktop/src/common/i18n/locales/
+├── zh-CN/                # 中文语言包
+└── en-US/                # 英文语言包
+packages/desktop/src/renderer/services/i18n/
 ├── index.ts              # i18next 配置文件
-├── locales/
-│   ├── zh-CN.json        # 中文语言包
-│   └── en-US.json        # 英文语言包
 └── README.md             # 说明文档
 ```
 
@@ -60,8 +60,8 @@ const LanguageSwitcher = () => {
 
 ## 添加新的翻译
 
-1. 在 `src/renderer/i18n/locales/zh-CN.json` 中添加中文翻译
-2. 在 `src/renderer/i18n/locales/en-US.json` 中添加对应的英文翻译
+1. 在 `packages/desktop/src/common/i18n/locales/zh-CN/` 中添加中文翻译
+2. 在 `packages/desktop/src/common/i18n/locales/en-US/` 中添加对应的英文翻译
 3. 在组件中使用 `t('key')` 来获取翻译
 
 ### 翻译键的命名规范

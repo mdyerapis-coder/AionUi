@@ -10,11 +10,8 @@ import { Delete, EditTwo, Robot } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import type { Assistant } from '@/common/types/agent/assistantTypes';
 import { resolveAgentAvatar, useAgentLogos } from '@/renderer/utils/model/agentLogo';
-import {
-  type AgentManagementStatus,
-  type ManagedAgent,
-  formatManagedAgentDiagnosticMessage,
-} from '@/renderer/utils/model/agentTypes';
+import type { AgentManagementStatus } from '@/common/types/agent/agentMetadata';
+import { type ManagedAgent, formatManagedAgentDiagnosticMessage } from '@/renderer/utils/model/agentTypes';
 import { BoundAssistantStack } from './BoundAssistants';
 
 type AgentCardProps =

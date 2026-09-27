@@ -8,7 +8,11 @@ import { describe, expect, it, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve as pathResolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { processImageUri, saveGeneratedImage, executeImageGeneration } from '@/common/chat/imageGenCore';
+import {
+  processImageUri,
+  saveGeneratedImage,
+  executeImageGeneration,
+} from '@/process/resources/builtinMcp/imageGenCore';
 
 let cleanupDirs: string[] = [];
 

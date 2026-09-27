@@ -27,7 +27,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const LOCALES_DIR = path.resolve(__dirname, '../../../packages/desktop/src/renderer/services/i18n/locales');
+const LOCALES_DIR = path.resolve(__dirname, '../../../packages/desktop/src/common/i18n/locales');
 
 // Original pre-caveat copy lengths were ~100-170 chars for latin locales and
 // ~45-60 for CJK. The caveat roughly doubles them; these floors sit above the

@@ -14,19 +14,19 @@ import {
 } from '@/common/config/i18n';
 
 // Static imports for all locales to ensure packaged app can always switch language.
-import enUS from './locales/en-US/index';
-import zhCN from './locales/zh-CN/index';
-import jaJP from './locales/ja-JP/index';
-import zhTW from './locales/zh-TW/index';
-import koKR from './locales/ko-KR/index';
-import trTR from './locales/tr-TR/index';
-import ruRU from './locales/ru-RU/index';
-import ukUA from './locales/uk-UA/index';
-import ptBR from './locales/pt-BR/index';
-import deDE from './locales/de-DE/index';
-import esES from './locales/es-ES/index';
-import frFR from './locales/fr-FR/index';
-import faIR from './locales/fa-IR/index';
+import enUS from '@/common/i18n/locales/en-US/index';
+import zhCN from '@/common/i18n/locales/zh-CN/index';
+import jaJP from '@/common/i18n/locales/ja-JP/index';
+import zhTW from '@/common/i18n/locales/zh-TW/index';
+import koKR from '@/common/i18n/locales/ko-KR/index';
+import trTR from '@/common/i18n/locales/tr-TR/index';
+import ruRU from '@/common/i18n/locales/ru-RU/index';
+import ukUA from '@/common/i18n/locales/uk-UA/index';
+import ptBR from '@/common/i18n/locales/pt-BR/index';
+import deDE from '@/common/i18n/locales/de-DE/index';
+import esES from '@/common/i18n/locales/es-ES/index';
+import frFR from '@/common/i18n/locales/fr-FR/index';
+import faIR from '@/common/i18n/locales/fa-IR/index';
 export type { I18nKey, I18nModule } from './i18n-keys';
 
 // Re-exports

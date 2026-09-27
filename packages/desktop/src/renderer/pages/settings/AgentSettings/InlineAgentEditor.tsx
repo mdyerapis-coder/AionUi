@@ -5,7 +5,8 @@
  */
 
 import type { CustomAgentAdvancedOverrides } from '@/common/types/platform/acpTypes';
-import type { AgentMetadata, ManagedAgent } from '@/renderer/utils/model/agentTypes';
+import type { AgentMetadata } from '@/common/types/agent/agentMetadata';
+import type { ManagedAgent } from '@/renderer/utils/model/agentTypes';
 import { acpConversation, dialog, fs } from '@/common/adapter/ipcBridge';
 import { useAssistantList } from '@/renderer/hooks/assistant';
 import { resolveAvatarImageSrc } from '@/renderer/pages/settings/AssistantSettings/assistantUtils';

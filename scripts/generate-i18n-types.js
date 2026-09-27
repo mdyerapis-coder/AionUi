@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const LOCALES_DIR = path.resolve(__dirname, '../packages/desktop/src/renderer/services/i18n/locales');
+const LOCALES_DIR = path.resolve(__dirname, '../packages/desktop/src/common/i18n/locales');
 const OUTPUT_FILE = path.resolve(__dirname, '../packages/desktop/src/renderer/services/i18n/i18n-keys.d.ts');
 const OXFMT_BIN = path.resolve(
   __dirname,

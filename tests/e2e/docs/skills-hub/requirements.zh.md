@@ -639,7 +639,7 @@ useEffect(() => {
 
 #### 2.9.1 i18n 文本覆盖范围
 
-**源码文件**：`src/renderer/services/i18n/locales/*/settings.json`（key: `skillsHub`）
+**源码文件**：`packages/desktop/src/common/i18n/locales/*/settings.json`（key: `skillsHub`）
 
 **完整 i18n key 映射表**：
 
@@ -684,8 +684,8 @@ useEffect(() => {
 
 **语言支持**：
 
-- 英文（en-US）：`src/renderer/services/i18n/locales/en-US/settings.json:3-40`
-- 中文（zh-CN）：`src/renderer/services/i18n/locales/zh-CN/settings.json:3-40`
+- 英文（en-US）：`packages/desktop/src/common/i18n/locales/en-US/settings.json:3-40`
+- 中文（zh-CN）：`packages/desktop/src/common/i18n/locales/zh-CN/settings.json:3-40`
 - 其他语言：tr-TR, uk-UA, ru-RU, ko-KR, ja-JP, zh-TW
 
 **E2E 测试使用**：
@@ -1493,8 +1493,8 @@ normalizeTestId('skill<test>'); // → 'skill-test-'
 
 ### 9.3 国际化资源
 
-- `src/renderer/services/i18n/locales/en-US/settings.json`（英文）
-- `src/renderer/services/i18n/locales/zh-CN/settings.json`（中文）
+- `packages/desktop/src/common/i18n/locales/en-US/settings.json`（英文）
+- `packages/desktop/src/common/i18n/locales/zh-CN/settings.json`（中文）
 - 其他语言：tr-TR, uk-UA, ru-RU, ko-KR, ja-JP, zh-TW
 
 ---

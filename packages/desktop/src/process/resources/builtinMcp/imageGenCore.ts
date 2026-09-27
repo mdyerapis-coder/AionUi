@@ -5,9 +5,7 @@
  */
 
 /**
- * Shared image generation logic used by both:
- * - The built-in MCP server (imageGenServer.ts)
- * - The legacy Gemini-specific tool (img-gen.ts)
+ * Image generation core for the built-in MCP server (imageGenServer.ts).
  */
 
 import * as fs from 'fs';
