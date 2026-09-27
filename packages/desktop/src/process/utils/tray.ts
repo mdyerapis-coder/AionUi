@@ -185,8 +185,8 @@ const buildTrayContextMenu = async (): Promise<Electron.Menu> => {
         label: i18n.t('pet.sizeSmall', { px: 200 }),
         click: async () => {
           try {
-            const { resizePetWindow } = await import('../pet/petManager');
-            resizePetWindow(200);
+            const { commitPetSize } = await import('../pet/petManager');
+            await commitPetSize(200);
           } catch {
             /* ignore */
           }
@@ -196,8 +196,8 @@ const buildTrayContextMenu = async (): Promise<Electron.Menu> => {
         label: i18n.t('pet.sizeMedium', { px: 280 }),
         click: async () => {
           try {
-            const { resizePetWindow } = await import('../pet/petManager');
-            resizePetWindow(280);
+            const { commitPetSize } = await import('../pet/petManager');
+            await commitPetSize(280);
           } catch {
             /* ignore */
           }
@@ -207,8 +207,8 @@ const buildTrayContextMenu = async (): Promise<Electron.Menu> => {
         label: i18n.t('pet.sizeLarge', { px: 360 }),
         click: async () => {
           try {
-            const { resizePetWindow } = await import('../pet/petManager');
-            resizePetWindow(360);
+            const { commitPetSize } = await import('../pet/petManager');
+            await commitPetSize(360);
           } catch {
             /* ignore */
           }

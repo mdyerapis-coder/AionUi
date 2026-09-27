@@ -1411,6 +1411,10 @@ export const systemSettings = {
   setPetSize: bridge.buildProvider<void, { size: number }>('system-settings:set-pet-size'),
   getPetDnd: bridge.buildProvider<boolean, void>('system-settings:get-pet-dnd'),
   setPetDnd: bridge.buildProvider<void, { dnd: boolean }>('system-settings:set-pet-dnd'),
+  // Main process → renderer: size or do-not-disturb changed from any surface.
+  petPreferencesChanged: bridge.buildEmitter<{ size?: number; dnd?: boolean }>(
+    'system-settings:pet-preferences-changed'
+  ),
   getPetConfirmEnabled: bridge.buildProvider<boolean, void>('system-settings:get-pet-confirm-enabled'),
   setPetConfirmEnabled: bridge.buildProvider<void, { enabled: boolean }>('system-settings:set-pet-confirm-enabled'),
   ensureNodeRuntime: httpPost<{ ready: boolean }, { scope: IRuntimeStatusScope }>('/api/system/ensure-node-runtime'),

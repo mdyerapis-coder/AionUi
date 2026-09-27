@@ -15,7 +15,6 @@
 import { ipcBridge } from '@/common';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { changeLanguage } from '@process/services/i18n';
-import type { PetSize } from '@process/pet/petTypes';
 import { createOrUpdateTray, destroyTray, setCloseToTrayEnabled } from '@process/utils/tray';
 import { readCloseToTraySetting, writeCloseToTraySetting } from '@process/utils/closeToTraySetting';
 import { getResourceTrackerService } from '@process/services/resource-tracker';
@@ -74,14 +73,14 @@ export function initSystemSettingsBridge(): void {
   });
 
   ipcBridge.systemSettings.setPetEnabled.provider(async ({ enabled }) => {
-    const { createPetWindow, destroyPetWindow, isPetSupported } = await import('@process/pet/petManager');
+    const { destroyPetWindow, isPetSupported, openPetFromSavedPreferences } = await import('@process/pet/petManager');
     if (enabled && !isPetSupported()) {
       console.warn('[SystemSettings] Desktop pet is not supported in headless mode');
       return;
     }
     await ProcessConfig.set('pet.enabled', enabled);
     if (enabled) {
-      createPetWindow();
+      await openPetFromSavedPreferences();
     } else {
       destroyPetWindow();
     }
@@ -93,9 +92,8 @@ export function initSystemSettingsBridge(): void {
   });
 
   ipcBridge.systemSettings.setPetSize.provider(async ({ size }) => {
-    await ProcessConfig.set('pet.size', size);
-    const { resizePetWindow } = await import('@process/pet/petManager');
-    resizePetWindow(size as PetSize);
+    const { commitPetSize } = await import('@process/pet/petManager');
+    await commitPetSize(size);
   });
 
   ipcBridge.systemSettings.getPetDnd.provider(async () => {
@@ -104,9 +102,8 @@ export function initSystemSettingsBridge(): void {
   });
 
   ipcBridge.systemSettings.setPetDnd.provider(async ({ dnd }) => {
-    await ProcessConfig.set('pet.dnd', dnd);
-    const { setPetDndMode } = await import('@process/pet/petManager');
-    setPetDndMode(dnd);
+    const { commitPetDnd } = await import('@process/pet/petManager');
+    await commitPetDnd(dnd);
   });
 
   // Pet confirm-bubble toggle: when disabled, AI tool-call confirmations
