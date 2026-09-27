@@ -11,6 +11,7 @@
   "downloadMarkdown": "Markdown 파일 다운로드",
   "downloadCode": "{{language}} 파일 다운로드",
   "downloadDiff": "Diff 파일 다운로드",
+  "sideBySideLabel": "나란히 보기",
   "addToChat": "채팅에 추가",
   "openSplitScreen": "분할 화면 열기",
   "closeSplitScreen": "분할 화면 닫기",

@@ -11,6 +11,7 @@
   "downloadMarkdown": "Markdown ファイルをダウンロード",
   "downloadCode": "{{language}} ファイルをダウンロード",
   "downloadDiff": "Diff ファイルをダウンロード",
+  "sideBySideLabel": "左右に並べる",
   "addToChat": "チャットに追加",
   "openSplitScreen": "分割画面を開く",
   "closeSplitScreen": "分割画面を閉じる",
