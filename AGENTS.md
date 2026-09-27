@@ -2,7 +2,7 @@
 
 All contributors (human and AI) must follow [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. ([Chinese version](CONTRIBUTING.zh.md))
 
-> Agent map: see [map/AGENTS.md](map/AGENTS.md) for the desktop/web-host startup graph (what a change hits, cited to path:line). Partial coverage — UI, mobile, and examples are not mapped.
+> Agent map: see [map/AGENTS.md](map/AGENTS.md) for the desktop/web-host startup graph (what a change hits, cited to path:line). Partial coverage — UI and examples are not mapped.
 
 ## Code Conventions
 

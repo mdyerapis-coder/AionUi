@@ -24,7 +24,6 @@ project-root/
 ├── public/
 ├── patches/
 ├── homebrew/
-├── mobile/
 ├── examples/
 ├── package.json
 ├── tsconfig.json
