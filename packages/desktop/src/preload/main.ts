@@ -9,7 +9,7 @@
 // Bundled into this preload via `externalizeDepsPlugin({ exclude: [...] })` so
 // Electron's sandbox-mode preload doesn't try to resolve it from node_modules.
 import '@sentry/electron/preload';
-import { contextBridge, ipcRenderer, webUtils } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
 import { ADAPTER_BRIDGE_EVENT_KEY } from '../common/adapter/constant';
 
 /**
@@ -39,8 +39,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.off(ADAPTER_BRIDGE_EVENT_KEY, handler);
     };
   },
-  // 获取拖拽文件/目录的绝对路径 / Get absolute path for dragged file/directory
-  getPathForFile: (file: File) => webUtils.getPathForFile(file),
   // Feedback: collect and compress recent log files
   collectFeedbackLogs: () => ipcRenderer.invoke('feedback:collect-logs'),
   // Feedback: capture a screenshot of the current window

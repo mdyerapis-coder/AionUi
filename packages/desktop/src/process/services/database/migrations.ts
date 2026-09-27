@@ -1240,15 +1240,6 @@ export function getMigrationsToRun(fromVersion: number, toVersion: number): IMig
 }
 
 /**
- * Get migrations needed to downgrade from one version to another
- */
-export function getMigrationsToRollback(fromVersion: number, toVersion: number): IMigration[] {
-  return ALL_MIGRATIONS.filter((m) => m.version > toVersion && m.version <= fromVersion).toSorted(
-    (a, b) => b.version - a.version
-  );
-}
-
-/**
  * Run migrations in a transaction
  */
 export function runMigrations(db: ISqliteDriver, fromVersion: number, toVersion: number): void {
@@ -1308,85 +1299,4 @@ export function runMigrations(db: ISqliteDriver, fromVersion: number, toVersion:
     // Re-enable foreign keys regardless of success or failure
     db.pragma('foreign_keys = ON');
   }
-}
-
-/**
- * Rollback migrations (for testing/emergency use)
- * WARNING: This can cause data loss!
- */
-export function rollbackMigrations(db: ISqliteDriver, fromVersion: number, toVersion: number): void {
-  if (fromVersion <= toVersion) {
-    throw new Error('[Migrations] Cannot rollback to a higher or equal version');
-  }
-
-  const migrations = getMigrationsToRollback(fromVersion, toVersion);
-
-  if (migrations.length === 0) {
-    console.log(`[Migrations] No rollback needed from v${fromVersion} to v${toVersion}`);
-    return;
-  }
-
-  console.log(`[Migrations] Rolling back ${migrations.length} migrations from v${fromVersion} to v${toVersion}`);
-  console.warn('[Migrations] WARNING: This may cause data loss!');
-
-  // Disable foreign keys BEFORE the transaction (same reason as runMigrations)
-  db.pragma('foreign_keys = OFF');
-
-  // Run all rollbacks in a single transaction
-  const rollbackAll = db.transaction(() => {
-    for (const migration of migrations) {
-      try {
-        console.log(`[Migrations] Rolling back migration v${migration.version}: ${migration.name}`);
-        migration.down(db);
-
-        console.log(`[Migrations] ✓ Rollback v${migration.version} completed`);
-      } catch (error) {
-        console.error(`[Migrations] ✗ Rollback v${migration.version} failed:`, error);
-        throw error; // Transaction will rollback
-      }
-    }
-
-    // Verify foreign key integrity after rollback
-    const fkViolations = db.pragma('foreign_key_check') as unknown[];
-    if (fkViolations.length > 0) {
-      console.error('[Migrations] Foreign key violations detected after rollback:', fkViolations);
-      throw new Error(`[Migrations] Foreign key check failed: ${fkViolations.length} violation(s)`);
-    }
-  });
-
-  try {
-    rollbackAll();
-    console.log(`[Migrations] All rollbacks completed successfully`);
-  } catch (error) {
-    console.error('[Migrations] Rollback failed:', error);
-    throw error;
-  } finally {
-    db.pragma('foreign_keys = ON');
-  }
-}
-
-/**
- * Get migration history
- * Now simplified - just returns the current version
- */
-export function getMigrationHistory(db: ISqliteDriver): Array<{ version: number; name: string; timestamp: number }> {
-  const currentVersion = db.pragma('user_version', { simple: true }) as number;
-
-  // Return a simple array with just the current version
-  return [
-    {
-      version: currentVersion,
-      name: `Current schema version`,
-      timestamp: Date.now(),
-    },
-  ];
-}
-
-/**
- * Check if a specific migration has been applied
- * Now simplified - checks if current version >= target version
- */
-export function isMigrationApplied(db: ISqliteDriver, version: number): boolean {
-  const currentVersion = db.pragma('user_version', { simple: true }) as number;
-  return currentVersion >= version;
 }

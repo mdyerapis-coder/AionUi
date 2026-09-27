@@ -1,24 +1,7 @@
 // This is the only file in src/common/platform/ permitted to import from 'electron'.
-import { app, net, Notification, powerSaveBlocker, utilityProcess, type UtilityProcess } from 'electron';
+import { app, net, Notification } from 'electron';
 import path from 'path';
-import type { IPlatformServices, IWorkerProcess } from './IPlatformServices';
-
-class ElectronWorkerProcess implements IWorkerProcess {
-  constructor(private readonly up: UtilityProcess) {}
-
-  postMessage(message: unknown): void {
-    this.up.postMessage(message);
-  }
-
-  on(event: string, handler: (...args: unknown[]) => void): this {
-    this.up.on(event as Parameters<UtilityProcess['on']>[0], handler as never);
-    return this;
-  }
-
-  kill(): void {
-    this.up.kill();
-  }
-}
+import type { IPlatformServices } from './IPlatformServices';
 
 export class ElectronPlatformServices implements IPlatformServices {
   paths = {
@@ -38,26 +21,6 @@ export class ElectronPlatformServices implements IPlatformServices {
     getName: () => app.getName(),
     getVersion: () => app.getVersion(),
     needsCliSafeSymlinks: () => process.platform === 'darwin',
-  };
-
-  worker = {
-    fork: (modulePath: string, args: string[], opts: { cwd?: string; env?: Record<string, string> }): IWorkerProcess =>
-      new ElectronWorkerProcess(
-        utilityProcess.fork(modulePath, args, {
-          cwd: opts.cwd,
-          // Propagate DATA_DIR so utility processes can use NodePlatformServices
-          // without needing access to app.getPath (unavailable in utility process).
-          env: { DATA_DIR: app.getPath('userData'), ...opts.env },
-        })
-      ),
-  };
-
-  power = {
-    preventSleep: (): number | null => powerSaveBlocker.start('prevent-app-suspension'),
-    allowSleep: (id: number | null): void => {
-      if (id !== null) powerSaveBlocker.stop(id);
-    },
-    preventDisplaySleep: (): number | null => powerSaveBlocker.start('prevent-display-sleep'),
   };
 
   notification = {

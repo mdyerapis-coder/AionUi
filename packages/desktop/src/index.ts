@@ -867,9 +867,6 @@ const handleAppReady = async (): Promise<void> => {
     }
   } else if (isWebUIMode) {
     const userConfigInfo = loadUserWebUIConfig();
-    if (userConfigInfo.exists && userConfigInfo.path) {
-      // Config file loaded from user directory
-    }
     const resolvedPort = resolveWebUIPort(userConfigInfo.config, getSwitchValue);
     const allowRemote = resolveRemoteAccess(userConfigInfo.config, isRemoteMode);
     try {

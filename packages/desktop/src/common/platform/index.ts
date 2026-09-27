@@ -28,8 +28,7 @@ export function getPlatformServices(): IPlatformServices {
     // once registerPlatformServices() is called.
     if (process.versions?.electron) {
       // In Electron utility processes process.type === 'utility' and app is not
-      // accessible. Fall back to NodePlatformServices (DATA_DIR is injected by
-      // ElectronPlatformServices.fork so paths still resolve correctly).
+      // accessible. Fall back to NodePlatformServices.
       const processType = (process as NodeJS.Process & { type?: string }).type;
       if (processType !== 'browser') {
         _services = new NodePlatformServices();
@@ -66,12 +65,6 @@ export function getPlatformServices(): IPlatformServices {
         };
         _services = {
           paths,
-          worker: {
-            fork: () => {
-              throw new Error('[Platform] Worker not available before registerPlatformServices()');
-            },
-          },
-          power: { preventSleep: () => null, allowSleep: () => {}, preventDisplaySleep: () => null },
           notification: { send: () => {} },
           network: {
             fetch: (input: string | URL | Request, init?: RequestInit): Promise<Response> =>
@@ -88,12 +81,4 @@ export function getPlatformServices(): IPlatformServices {
   return _services;
 }
 
-export type {
-  IPlatformServices,
-  IPlatformPaths,
-  IWorkerProcess,
-  IWorkerProcessFactory,
-  IPowerManager,
-  INotificationService,
-  INetworkService,
-} from './IPlatformServices';
+export type { IPlatformServices, IPlatformPaths, INotificationService, INetworkService } from './IPlatformServices';

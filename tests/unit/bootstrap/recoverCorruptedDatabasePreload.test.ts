@@ -26,9 +26,6 @@ vi.mock('electron', () => ({
     send,
     sendSync,
   },
-  webUtils: {
-    getPathForFile: vi.fn(),
-  },
 }));
 
 describe('recover corrupted database preload bridge', () => {

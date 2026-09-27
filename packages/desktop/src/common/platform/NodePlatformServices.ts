@@ -1,25 +1,7 @@
-import { fork as cpFork, type ChildProcess } from 'child_process';
 import { readFileSync } from 'fs';
 import os from 'os';
 import path from 'path';
-import type { IPlatformServices, IWorkerProcess } from './IPlatformServices';
-
-class NodeWorkerProcess implements IWorkerProcess {
-  constructor(private readonly cp: ChildProcess) {}
-
-  postMessage(message: unknown): void {
-    this.cp.send(message as Parameters<ChildProcess['send']>[0]);
-  }
-
-  on(event: string, handler: (...args: unknown[]) => void): this {
-    this.cp.on(event, handler as (...args: unknown[]) => void);
-    return this;
-  }
-
-  kill(): void {
-    this.cp.kill();
-  }
-}
+import type { IPlatformServices } from './IPlatformServices';
 
 // Read name + version from package.json once at module load.
 const _pkg = (() => {
@@ -45,26 +27,6 @@ export class NodePlatformServices implements IPlatformServices {
     getName: () => _pkg.name ?? 'aionui',
     getVersion: () => _pkg.version ?? '0.0.0',
     needsCliSafeSymlinks: () => false,
-  };
-
-  worker = {
-    fork: (modulePath: string, args: string[], opts: { cwd?: string; env?: Record<string, string> }): IWorkerProcess =>
-      new NodeWorkerProcess(
-        cpFork(modulePath, args, {
-          cwd: opts.cwd,
-          env: opts.env,
-          // Enables V8 structured clone (supports Buffer, Map, Set).
-          // ArrayBuffer ownership transfer is not supported — acceptable
-          // because current IForkData messages contain no Transferables.
-          serialization: 'advanced',
-        })
-      ),
-  };
-
-  power = {
-    preventSleep: (): number | null => null,
-    allowSleep: (_id: number | null): void => {},
-    preventDisplaySleep: (): number | null => null,
   };
 
   notification = {

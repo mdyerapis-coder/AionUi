@@ -237,7 +237,3 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
       }),
   };
 }
-
-export async function stopStaticServer(handle: StaticServerHandle): Promise<void> {
-  await handle.stop();
-}
