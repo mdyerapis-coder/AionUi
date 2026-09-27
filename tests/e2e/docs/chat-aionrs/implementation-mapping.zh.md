@@ -10,51 +10,51 @@
 
 ## 统计概览
 
-| 类别        | 文档定义 | 实际实现 | 状态                           |
-| ----------- | -------- | -------- | ------------------------------ |
-| P0 核心流程 | 5        | 5        | ✅ 100%                        |
-| P1 功能验证 | 7        | 7        | ✅ 100%                        |
-| P2 边界用例 | 3        | 3        | ⚠️ 100% (需重写)               |
-| **总计**    | **15**   | **15**   | ⚠️ 100% (15/15, 其中 3 个偏差) |
+| 类别        | 文档定义 | 实际实现 | 状态                        |
+| ----------- | -------- | -------- | --------------------------- |
+| P0 核心流程 | 5        | 4        | TC-A-04 spec 已删除         |
+| P1 功能验证 | 7        | 4        | TC-A-07/08/09 spec 已删除   |
+| P2 边界用例 | 3        | 3        | ⚠️ 100% (需重写)            |
+| **总计**    | **15**   | **11**   | 4 个无条件 skip spec 已删除 |
 
-**截图总数**：61 次 `takeScreenshot()` 调用
-**平均截图数/测试**：4.1 张
+**截图总数**：历史统计含已删除 spec。现存 aionrs spec 为 basic-flow、permission-modes、combo-scenarios、edge-cases。
+**平均截图数/测试**：见下方按文件分组（已删除的两个文件不再计入）
 
 **当前测试状态**（v4 运行结果）：
 
-- ✅ Passed: 11/15 (TC-A-01/02/03/05/06/10/11/12/13/14/15)
-- ⏭️ Skipped: 4/15 (TC-A-04/07/08/09, aionrs binary 运行时切换挂起)
+- ✅ Passed (live specs): 11/15 (TC-A-01/02/03/05/06/10/11/12/13/14/15)
+- 🗑️ Removed: 4/15 (TC-A-04/07/08/09). `model-selection.e2e.ts` and `mid-conversation-switch.e2e.ts` were `test.skip(title, fn)` with no env/feature gate, so the bodies never ran. Reachable overlap lives in `combo-scenarios.e2e.ts` (TC-A-10/11/12) and `permission-modes.e2e.ts` (TC-A-06).
 - ❌ Failed: 0/15
 
 ---
 
-## P0 核心流程（5/5 实现）
+## P0 核心流程（4/5 仍有可执行 spec）
 
-| 用例 ID | 用例标题       | 实现文件                                                        | 行号 | 测试函数名                                                                      | 截图数 | 状态    |
-| ------- | -------------- | --------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------- | ------ | ------- |
-| TC-A-01 | 最小可行路径   | tests/e2e/features/conversations/aionrs/basic-flow.e2e.ts       | 79   | `test('TC-A-01: should complete minimal conversation with no attachments')`     | 4      | ✅      |
-| TC-A-02 | 关联单个文件夹 | tests/e2e/features/conversations/aionrs/basic-flow.e2e.ts       | 154  | `test('TC-A-02: should associate single folder and reference in message')`      | 3      | ✅      |
-| TC-A-03 | 上传单个文件   | tests/e2e/features/conversations/aionrs/basic-flow.e2e.ts       | 223  | `test('TC-A-03: should upload single file and binary receives file parameter')` | 3      | ✅      |
-| TC-A-04 | 非默认模型     | tests/e2e/features/conversations/aionrs/model-selection.e2e.ts  | 70   | `test.skip('TC-A-04: should use second model selected on guid page')`           | 4      | ⏭️ Skip |
-| TC-A-05 | yolo 权限      | tests/e2e/features/conversations/aionrs/permission-modes.e2e.ts | 69   | `test('TC-A-05: should use yolo permission selected on guid page')`             | 5      | ✅      |
+| 用例 ID | 用例标题       | 实现文件                                                        | 行号 | 测试函数名                                                                              | 截图数 | 状态    |
+| ------- | -------------- | --------------------------------------------------------------- | ---- | --------------------------------------------------------------------------------------- | ------ | ------- |
+| TC-A-01 | 最小可行路径   | tests/e2e/features/conversations/aionrs/basic-flow.e2e.ts       | 79   | `test('TC-A-01: should complete minimal conversation with no attachments')`             | 4      | ✅      |
+| TC-A-02 | 关联单个文件夹 | tests/e2e/features/conversations/aionrs/basic-flow.e2e.ts       | 154  | `test('TC-A-02: should associate single folder and reference in message')`              | 3      | ✅      |
+| TC-A-03 | 上传单个文件   | tests/e2e/features/conversations/aionrs/basic-flow.e2e.ts       | 223  | `test('TC-A-03: should upload single file and binary receives file parameter')`         | 3      | ✅      |
+| TC-A-04 | 非默认模型     | （已删除 `model-selection.e2e.ts`）                             | —    | 无条件 `test.skip`，正文从未执行。对话中选第二个模型见 `combo-scenarios.e2e.ts` TC-A-11 | —      | 🗑️ 删除 |
+| TC-A-05 | yolo 权限      | tests/e2e/features/conversations/aionrs/permission-modes.e2e.ts | 69   | `test('TC-A-05: should use yolo permission selected on guid page')`                     | 5      | ✅      |
 
-**小计**：5 个测试，19 张截图
+**小计**：4 个仍可执行的测试（TC-A-04 已删除）
 
 ---
 
-## P1 功能验证（7/7 实现）
+## P1 功能验证（4/7 仍有可执行 spec）
 
-| 用例 ID | 用例标题   | 实现文件                                                               | 行号 | 测试函数名                                                                              | 截图数 | 状态    |
-| ------- | ---------- | ---------------------------------------------------------------------- | ---- | --------------------------------------------------------------------------------------- | ------ | ------- |
-| TC-A-06 | 切换权限   | tests/e2e/features/conversations/aionrs/permission-modes.e2e.ts        | 154  | `test('TC-A-06: should switch permission mid-conversation and persist to DB')`          | 5      | ✅      |
-| TC-A-07 | 切换模型   | tests/e2e/features/conversations/aionrs/model-selection.e2e.ts         | 135  | `test.skip('TC-A-07: should switch model mid-conversation and update DB')`              | 5      | ⏭️ Skip |
-| TC-A-08 | 连续切换   | tests/e2e/features/conversations/aionrs/mid-conversation-switch.e2e.ts | 68   | `test('TC-A-08: should handle continuous switch (model → permission → model)')`         | 6      | ⏭️ Skip |
-| TC-A-09 | 多轮对话   | tests/e2e/features/conversations/aionrs/mid-conversation-switch.e2e.ts | 178  | `test('TC-A-09: should handle 3 rounds of conversation after model/permission switch')` | 6      | ⏭️ Skip |
-| TC-A-10 | 组合场景 1 | tests/e2e/features/conversations/aionrs/combo-scenarios.e2e.ts         | 72   | `test('TC-A-10: should handle folder + second model + yolo mode combo')`                | 3      | ✅      |
-| TC-A-11 | 组合场景 2 | tests/e2e/features/conversations/aionrs/combo-scenarios.e2e.ts         | 151  | `test('TC-A-11: should handle file + non-default model + default mode combo')`          | 3      | ✅      |
-| TC-A-12 | 完整组合   | tests/e2e/features/conversations/aionrs/combo-scenarios.e2e.ts         | 229  | `test('TC-A-12: should handle full combo (folder + file + second model + yolo)')`       | 4      | ✅      |
+| 用例 ID | 用例标题   | 实现文件                                                        | 行号 | 测试函数名                                                                                       | 截图数 | 状态    |
+| ------- | ---------- | --------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------ | ------ | ------- |
+| TC-A-06 | 切换权限   | tests/e2e/features/conversations/aionrs/permission-modes.e2e.ts | 154  | `test('TC-A-06: should switch permission mid-conversation and persist to DB')`                   | 5      | ✅      |
+| TC-A-07 | 切换模型   | （已删除 `model-selection.e2e.ts`）                             | —    | 无条件 `test.skip`。对话中切换第二个模型后发消息见 `combo-scenarios.e2e.ts` TC-A-10/11/12        | —      | 🗑️ 删除 |
+| TC-A-08 | 连续切换   | （已删除 `mid-conversation-switch.e2e.ts`）                     | —    | 无条件 `test.skip`。模型切换见 combo TC-A-10/11/12；权限切换见 `permission-modes.e2e.ts` TC-A-06 | —      | 🗑️ 删除 |
+| TC-A-09 | 多轮对话   | （已删除 `mid-conversation-switch.e2e.ts`）                     | —    | 无条件 `test.skip`。切换后单轮对话见 combo TC-A-10/11/12；多轮链路从未执行                       | —      | 🗑️ 删除 |
+| TC-A-10 | 组合场景 1 | tests/e2e/features/conversations/aionrs/combo-scenarios.e2e.ts  | 72   | `test('TC-A-10: should handle folder + second model + yolo mode combo')`                         | 3      | ✅      |
+| TC-A-11 | 组合场景 2 | tests/e2e/features/conversations/aionrs/combo-scenarios.e2e.ts  | 151  | `test('TC-A-11: should handle file + non-default model + default mode combo')`                   | 3      | ✅      |
+| TC-A-12 | 完整组合   | tests/e2e/features/conversations/aionrs/combo-scenarios.e2e.ts  | 229  | `test('TC-A-12: should handle full combo (folder + file + second model + yolo)')`                | 4      | ✅      |
 
-**小计**：7 个测试，32 张截图
+**小计**：4 个仍可执行的测试（TC-A-07/08/09 已删除）
 
 ---
 
@@ -74,24 +74,24 @@
 
 ### 按优先级分组
 
-| 优先级   | 测试数 | 总截图数 | 平均截图数 |
-| -------- | ------ | -------- | ---------- |
-| P0       | 5      | 19       | 3.8        |
-| P1       | 7      | 32       | 4.6        |
-| P2       | 3      | 9        | 3.0        |
-| **总计** | **15** | **60**   | **4.0**    |
+| 优先级   | 仍可执行的测试数 | 备注                         |
+| -------- | ---------------- | ---------------------------- |
+| P0       | 4                | TC-A-04 spec 已删除          |
+| P1       | 4                | TC-A-07/08/09 spec 已删除    |
+| P2       | 3                | 定义与实现仍有偏差           |
+| **总计** | **11**           | 与下方现存 spec 文件分组一致 |
 
 ### 按文件分组
 
-| 文件名                         | 测试数 | 总截图数 |
-| ------------------------------ | ------ | -------- |
-| basic-flow.e2e.ts              | 3      | 10       |
-| model-selection.e2e.ts         | 2      | 9        |
-| permission-modes.e2e.ts        | 2      | 10       |
-| combo-scenarios.e2e.ts         | 3      | 10       |
-| mid-conversation-switch.e2e.ts | 2      | 12       |
-| edge-cases.e2e.ts              | 3      | 9        |
-| **总计**                       | **15** | **60**   |
+| 文件名                  | 测试数 | 总截图数 |
+| ----------------------- | ------ | -------- |
+| basic-flow.e2e.ts       | 3      | 10       |
+| permission-modes.e2e.ts | 2      | 10       |
+| combo-scenarios.e2e.ts  | 3      | 10       |
+| edge-cases.e2e.ts       | 3      | 9        |
+| **总计（现存 spec）**   | **11** | **39**   |
+
+`model-selection.e2e.ts`（2 tests）和 `mid-conversation-switch.e2e.ts`（2 tests）已删除，不再计入。
 
 ---
 
@@ -165,12 +165,9 @@
 - 文件夹关联（TC-A-02）：验证 workspace 参数传递和文件夹访问
 - 文件上传（TC-A-03）：验证 workspace 内文件读取能力
 
-### 模型选择测试 (model-selection.e2e.ts, 9 screenshots)
+### 模型选择（已删除 model-selection.e2e.ts）
 
-包含 2 个模型相关测试用例，覆盖：
-
-- 非默认模型（TC-A-04）：验证 modelB 选择（当前环境 skip）
-- 模型切换（TC-A-07）：验证对话中切换 modelA → modelB（当前环境 skip）
+TC-A-04 / TC-A-07 以 `test.skip(title, fn)` 注册，回调永不执行，也没有可翻转的 env 条件。对话中选择第二个模型并继续发消息由 `combo-scenarios.e2e.ts`（TC-A-10/11/12）覆盖。
 
 ### 权限模式测试 (permission-modes.e2e.ts, 10 screenshots)
 
@@ -187,12 +184,9 @@
 - file + model + default（TC-A-11）：验证文件 + 非默认模型 + 默认权限
 - 完整组合（TC-A-12）：folder + file + model + yolo 全维度组合
 
-### 对话中切换测试 (mid-conversation-switch.e2e.ts, 12 screenshots)
+### 对话中连续切换（已删除 mid-conversation-switch.e2e.ts）
 
-包含 2 个动态切换测试用例，覆盖：
-
-- 连续切换（TC-A-08）：model → permission → model 三次切换（当前环境 skip）
-- 多轮对话（TC-A-09）：切换后进行 3 轮对话验证持久化（当前环境 skip）
+TC-A-08 / TC-A-09 同样是无条件 `test.skip(title, fn)`。模型切换见 `combo-scenarios.e2e.ts`；对话中权限切换见 `permission-modes.e2e.ts` TC-A-06。model → permission → model 再多轮的组合从未运行。
 
 ### 边界用例测试 (edge-cases.e2e.ts, 9 screenshots)
 
@@ -208,21 +202,19 @@
 
 ### 截图覆盖率
 
-- **所有测试均含截图**：15/15 (100%)
-- **符合"至少 3 张"规则**：15/15 (100%)
-- **平均截图数**：4.0 张/测试（略低于 Gemini 的 4.7 张，合理范围）
+- **现存可执行测试**：11（TC-A-04/07/08/09 的 spec 已删除，不再计入截图覆盖）
 
 ### 测试用例完整性
 
-- **P0 核心功能覆盖**：5/5 (100%)
-- **P1 功能验证覆盖**：7/7 (100%)
+- **P0 核心功能覆盖**：4/5 可执行（TC-A-04 的 spec 已删除）
+- **P1 功能验证覆盖**：4/7 可执行（TC-A-07/08/09 的 spec 已删除）
 - **P2 边界用例覆盖**：3/3 (100%, 但需重写)
 
 ### 实现分布均衡性
 
-- **最大文件（mid-conversation-switch.e2e.ts）**：2 个测试，13.3%
-- **平均每文件测试数**：2.5 个测试
-- **文件数/测试数比**：6 文件 / 15 测试 = 0.4（Gemini 为 5/15 = 0.33，分布更分散）
+- **现存最大文件**：`combo-scenarios.e2e.ts` / `edge-cases.e2e.ts` / `basic-flow.e2e.ts`，各 3 个测试
+- **平均每文件测试数**：11 / 4 = 2.75
+- **文件数/测试数比**：4 文件 / 11 个仍在运行的测试（TC-A-04/07/08/09 的 spec 已删除）
 
 ---
 
@@ -339,18 +331,17 @@ expect(extra.workspace).toBe(workspacePath); // 或 undefined（无文件夹）
 
 **当前处理**：
 
-- TC-A-04 / TC-A-07 / TC-A-08 / TC-A-09 标记为 `test.skip()`，跳过原因记录在测试代码注释中
-- 等待产品侧对 aionrs binary 的运行时切换逻辑进行诊断
-- 重开条件：产品团队确认 binary 支持运行时切换，或提供 workaround 方案
+- `model-selection.e2e.ts` 与 `mid-conversation-switch.e2e.ts` 已删除。四个用例都是 `test.skip('<title>', fn)`，没有 env / feature 开关，函数体永远不会执行。
+- 仍在运行的重叠覆盖：对话中切换到第二个模型后发消息 — `combo-scenarios.e2e.ts` TC-A-10/11/12；对话中切换权限 — `permission-modes.e2e.ts` TC-A-06。
+- 历史阻塞：aionrs binary 在运行时 model/permission 切换后挂起（见上文复现步骤）。若要恢复 TC-A-08/09 的连续切换 + 多轮断言，需要新的可执行 spec，而不是把已跳过的正文加回来。
 
 **影响范围**：
 
-- P0 核心流程：1 个测试用例（TC-A-04）
-- P1 功能验证：3 个测试用例（TC-A-07, TC-A-08, TC-A-09）
-- 实际用户场景：对话中切换 model 或 permission 后，后续消息可能无响应
+- 已删除的 spec：P0 TC-A-04，P1 TC-A-07 / TC-A-08 / TC-A-09
+- 实际用户场景：对话中切换 model 或 permission 后，后续消息可能无响应（该行为不再由永久 skip 的 spec 覆盖）
 
 ---
 
 **最后更新**：2026-04-22
 **维护者**：chat-aionrs-engineer
-**状态**：✅ P0/P1 实现完整（除 TC-A-08/09 已知问题），✅ P2 已按原定义重写（TC-A-13/14/15）
+**状态**：TC-A-04/07/08/09 的永久 skip spec 已删除；其余 aionrs spec 仍在 `tests/e2e/features/conversations/aionrs/`
