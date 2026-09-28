@@ -62,6 +62,9 @@ async function capturePetPage(electronApp: ElectronApplication, filePath: string
     const win = electron.BrowserWindow.getAllWindows().find((candidate) => {
       if (candidate.isDestroyed()) return false;
       const url = candidate.webContents.getURL();
+      // pet-hit.html contains "/pet/pet", so a substring check would capture the
+      // transparent hit window (no SVG) instead of the draw page.
+      if (url.includes('pet-hit') || url.includes('pet-confirm')) return false;
       return url.includes('pet.html') || url.includes('/pet/pet');
     });
     if (!win) return null;
