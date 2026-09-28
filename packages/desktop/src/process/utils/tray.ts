@@ -327,3 +327,46 @@ export const destroyTray = (): void => {
     tray = null;
   }
 };
+
+type TrayPetAction = 'show-hide' | 'size-200' | 'size-280' | 'size-360';
+
+const findTrayMenuItem = (menu: Electron.Menu, label: string): Electron.MenuItem | undefined => {
+  for (const item of menu.items) {
+    if (item.label === label) return item;
+    if (item.submenu) {
+      const nested = findTrayMenuItem(item.submenu, label);
+      if (nested) return nested;
+    }
+  }
+  return undefined;
+};
+
+/**
+ * Activate one Desktop Pet item on the tray menu.
+ *
+ * E2E only. xvfb has no status-icon host, and the suite turns the tray off at
+ * startup, so tests cannot click the icon. This still runs the menu item's
+ * own click handler (checkbox/radio state included) rather than a copy of it.
+ */
+export const e2eInvokeTrayPetItem = async (which: TrayPetAction): Promise<void> => {
+  if (process.env.AIONUI_E2E_TEST !== '1') {
+    throw new Error('Tray pet actions can only be invoked from E2E');
+  }
+  const label =
+    which === 'show-hide'
+      ? i18n.t('pet.showHide')
+      : which === 'size-200'
+        ? i18n.t('pet.sizeSmall', { px: 200 })
+        : which === 'size-280'
+          ? i18n.t('pet.sizeMedium', { px: 280 })
+          : i18n.t('pet.sizeLarge', { px: 360 });
+  const menu = await buildTrayContextMenu();
+  const item = findTrayMenuItem(menu, label);
+  if (!item) {
+    throw new Error(`Tray menu is missing ${which} (${label})`);
+  }
+  item.click();
+  // The show/hide and resize handlers import petManager asynchronously.
+  // Give that import a turn so callers can observe the window change.
+  await new Promise((resolve) => setTimeout(resolve, 50));
+};

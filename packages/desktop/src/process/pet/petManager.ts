@@ -6,6 +6,8 @@
 
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron';
+import { bridge } from '@/common/platform/bridge';
+import { ProcessConfig } from '@process/utils/initStorage';
 import i18n from '@process/services/i18n';
 import { PetStateMachine } from './petStateMachine';
 import { PetIdleTicker } from './petIdleTicker';
@@ -78,6 +80,9 @@ let hitIgnoreWatchdog: ReturnType<typeof setInterval> | null = null;
 // Last ignore state the hit window was set to (tracked via the IPC handler so
 // the watchdog can tell whether it's already safe).
 let lastHitIgnoreState = true;
+// Draw window is created with ignore-mouse-events and never toggled. Electron
+// has no getter for that flag, so E2E reads this record of the main-process call.
+let drawIgnoresMouse = true;
 // Whether tool-call confirmations should be routed to the pet's bubble window.
 // When false, the pet still runs normally but confirmation requests stay in the
 // main chat window. Updated at runtime via setPetConfirmEnabled() and read on
@@ -133,6 +138,7 @@ export function createPetWindow(): void {
   }
 
   petWindow.setIgnoreMouseEvents(true);
+  drawIgnoresMouse = true;
 
   // Hit detection window (body area only, 60% of pet size)
   const hitSize = Math.round(currentSize * 0.6);
@@ -441,49 +447,7 @@ function registerIpcHandlers(): void {
 
   ipcMain.on('pet:context-menu', () => {
     if (!petHitWindow || petHitWindow.isDestroyed()) return;
-
-    const sizeKeys = { 200: 'pet.sizeSmall', 280: 'pet.sizeMedium', 360: 'pet.sizeLarge' } as const;
-    const menu = Menu.buildFromTemplate([
-      {
-        label: i18n.t('pet.pat'),
-        click: () => {
-          if (stateMachine && idleTicker) {
-            idleTicker.resetIdle();
-            stateMachine.requestState('happy');
-          }
-        },
-      },
-      { type: 'separator' },
-      {
-        label: i18n.t('pet.size'),
-        submenu: ([200, 280, 360] as PetSize[]).map((size) => ({
-          label: i18n.t(sizeKeys[size], { px: size }),
-          type: 'radio' as const,
-          checked: currentSize === size,
-          click: () => resizePet(size),
-        })),
-      },
-      { type: 'separator' },
-      {
-        label: i18n.t('pet.dnd'),
-        type: 'checkbox',
-        checked: stateMachine?.getDnd() ?? false,
-        click: (menuItem) => {
-          stateMachine?.setDnd(menuItem.checked);
-        },
-      },
-      { type: 'separator' },
-      {
-        label: i18n.t('pet.resetPosition'),
-        click: () => resetPosition(),
-      },
-      {
-        label: i18n.t('pet.hide'),
-        click: () => hidePetWindow(),
-      },
-    ]);
-
-    menu.popup({ window: petHitWindow });
+    buildPetContextMenu().popup({ window: petHitWindow });
   });
 
   ipcMain.on('pet:set-ignore-mouse-events', (_event, ignore: boolean, options?: { forward: boolean }) => {
@@ -689,3 +653,278 @@ function resetPosition(): void {
   // Update confirm window anchor
   updateAnchorBounds({ x, y, width: currentSize, height: currentSize });
 }
+
+function buildPetContextMenu(): Electron.Menu {
+  const sizeKeys = { 200: 'pet.sizeSmall', 280: 'pet.sizeMedium', 360: 'pet.sizeLarge' } as const;
+  return Menu.buildFromTemplate([
+    {
+      label: i18n.t('pet.pat'),
+      click: () => {
+        if (stateMachine && idleTicker) {
+          idleTicker.resetIdle();
+          stateMachine.requestState('happy');
+        }
+      },
+    },
+    { type: 'separator' },
+    {
+      label: i18n.t('pet.size'),
+      submenu: ([200, 280, 360] as PetSize[]).map((size) => ({
+        label: i18n.t(sizeKeys[size], { px: size }),
+        type: 'radio' as const,
+        checked: currentSize === size,
+        click: () => resizePet(size),
+      })),
+    },
+    { type: 'separator' },
+    {
+      label: i18n.t('pet.dnd'),
+      type: 'checkbox',
+      checked: stateMachine?.getDnd() ?? false,
+      click: (menuItem) => {
+        stateMachine?.setDnd(menuItem.checked);
+      },
+    },
+    { type: 'separator' },
+    {
+      label: i18n.t('pet.resetPosition'),
+      click: () => resetPosition(),
+    },
+    {
+      label: i18n.t('pet.hide'),
+      click: () => hidePetWindow(),
+    },
+  ]);
+}
+
+type PetContextAction = 'pat' | 'hide' | 'dnd' | 'reset-position' | 'size-200' | 'size-280' | 'size-360';
+
+type TrayPetAction = 'show-hide' | 'size-200' | 'size-280' | 'size-360';
+
+type PetE2EWindowSnap = {
+  role: 'draw' | 'hit' | 'confirm';
+  url: string;
+  visible: boolean;
+  alwaysOnTop: boolean;
+  focusable: boolean;
+  frame: boolean | null;
+  transparent: boolean | null;
+  backgroundColor: string;
+  ignoreMouseEvents: boolean;
+  bounds: { x: number; y: number; width: number; height: number };
+};
+
+type PetE2ESnapshot = {
+  state: PetState | null;
+  renderedState: string | null;
+  dnd: boolean;
+  size: PetSize;
+  confirmBubbleEnabled: boolean;
+  ozonePlatform: string;
+  cursor: { x: number; y: number };
+  primaryWorkArea: { x: number; y: number; width: number; height: number };
+  displayCount: number;
+  saved: { enabled: boolean; size: number; dnd: boolean };
+  windows: PetE2EWindowSnap[];
+};
+
+const PET_E2E_GLOBAL = '__AIONUI_E2E_PET__';
+
+function isE2ETest(): boolean {
+  return process.env.AIONUI_E2E_TEST === '1';
+}
+
+function findMenuItem(menu: Electron.Menu, label: string): Electron.MenuItem | undefined {
+  for (const item of menu.items) {
+    if (item.label === label) return item;
+    if (item.submenu) {
+      const nested = findMenuItem(item.submenu, label);
+      if (nested) return nested;
+    }
+  }
+  return undefined;
+}
+
+function contextActionLabel(which: PetContextAction): string {
+  switch (which) {
+    case 'pat':
+      return i18n.t('pet.pat');
+    case 'hide':
+      return i18n.t('pet.hide');
+    case 'dnd':
+      return i18n.t('pet.dnd');
+    case 'reset-position':
+      return i18n.t('pet.resetPosition');
+    case 'size-200':
+      return i18n.t('pet.sizeSmall', { px: 200 });
+    case 'size-280':
+      return i18n.t('pet.sizeMedium', { px: 280 });
+    case 'size-360':
+      return i18n.t('pet.sizeLarge', { px: 360 });
+  }
+}
+
+function readBooleanOption(win: BrowserWindow, key: 'frame' | 'transparent'): boolean | null {
+  const record = win as unknown as Record<string, unknown>;
+  const candidates = [record.browserWindowOptions, record._browserWindowOptions, record.options];
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object' || !(key in candidate)) continue;
+    const value = (candidate as Record<string, unknown>)[key];
+    if (typeof value === 'boolean') return value;
+  }
+  return null;
+}
+
+function petWindowRole(url: string): PetE2EWindowSnap['role'] | null {
+  if (url.includes('pet-hit')) return 'hit';
+  if (url.includes('pet-confirm')) return 'confirm';
+  if (url.includes('pet.html') || url.includes('/pet/pet')) return 'draw';
+  return null;
+}
+
+function ignoreMouseFor(role: PetE2EWindowSnap['role']): boolean {
+  if (role === 'draw') return drawIgnoresMouse;
+  if (role === 'hit') return lastHitIgnoreState;
+  return false;
+}
+
+async function readRenderedState(): Promise<string | null> {
+  if (!petWindow || petWindow.isDestroyed()) return null;
+  try {
+    const data: unknown = await petWindow.webContents.executeJavaScript(
+      "document.querySelector('#pet')?.getAttribute('data') ?? ''"
+    );
+    if (typeof data !== 'string' || data.length === 0) return null;
+    const match = /([^/]+)\.svg(?:$|\?)/.exec(data);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function runInHitWindow(source: string): Promise<void> {
+  if (!petHitWindow || petHitWindow.isDestroyed()) {
+    throw new Error('Pet hit window is not open');
+  }
+  await petHitWindow.webContents.executeJavaScript(source);
+}
+
+function installPetE2EApi(): void {
+  if (!isE2ETest()) return;
+
+  const api = {
+    async snapshot(): Promise<PetE2ESnapshot> {
+      const workArea = screen.getPrimaryDisplay().workArea;
+      const [enabled, savedSize, savedDnd] = await Promise.all([
+        ProcessConfig.get('pet.enabled'),
+        ProcessConfig.get('pet.size'),
+        ProcessConfig.get('pet.dnd'),
+      ]);
+      const windows: PetE2EWindowSnap[] = [];
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (win.isDestroyed()) continue;
+        const url = win.webContents.getURL();
+        const role = petWindowRole(url);
+        if (!role) continue;
+        const [x, y] = win.getPosition();
+        const [width, height] = win.getSize();
+        windows.push({
+          role,
+          url,
+          visible: win.isVisible(),
+          alwaysOnTop: win.isAlwaysOnTop(),
+          focusable: win.isFocusable(),
+          frame: readBooleanOption(win, 'frame'),
+          transparent: readBooleanOption(win, 'transparent'),
+          backgroundColor: win.getBackgroundColor(),
+          ignoreMouseEvents: ignoreMouseFor(role),
+          bounds: { x, y, width, height },
+        });
+      }
+      return {
+        state: stateMachine?.getCurrentState() ?? null,
+        renderedState: await readRenderedState(),
+        dnd: stateMachine?.getDnd() ?? false,
+        size: currentSize,
+        confirmBubbleEnabled,
+        ozonePlatform: app.commandLine.getSwitchValue('ozone-platform'),
+        cursor: screen.getCursorScreenPoint(),
+        primaryWorkArea: { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
+        displayCount: screen.getAllDisplays().length,
+        saved: {
+          enabled: enabled ?? false,
+          size: typeof savedSize === 'number' ? savedSize : 280,
+          dnd: savedDnd ?? false,
+        },
+        windows,
+      };
+    },
+
+    /**
+     * Deliver an agent event the same way the main-process adapter does:
+     * `bridge.emit` → pet notify hook → `PetEventBridge.handleBridgeMessage`.
+     * Channel names stay the real ones (`message.stream`, `message.userCreated`,
+     * `turn.completed`) so a channel-list fix makes these assertions pass.
+     */
+    emitAgentEvent(name: string, data: unknown): void {
+      bridge.emit(name, data);
+    },
+
+    invokeContextItem(which: PetContextAction): void {
+      const menu = buildPetContextMenu();
+      const item = findMenuItem(menu, contextActionLabel(which));
+      if (!item) {
+        throw new Error(`Pet context menu is missing ${which}`);
+      }
+      const win = petHitWindow && !petHitWindow.isDestroyed() ? petHitWindow : undefined;
+      item.click(undefined, win, win?.webContents);
+    },
+
+    async invokeTrayItem(which: TrayPetAction): Promise<void> {
+      const { e2eInvokeTrayPetItem } = await import('@process/utils/tray');
+      await e2eInvokeTrayPetItem(which);
+    },
+
+    async dragStart(): Promise<void> {
+      await runInHitWindow('window.petHitAPI.dragStart()');
+    },
+
+    async dragEnd(): Promise<void> {
+      await runInHitWindow('window.petHitAPI.dragEnd()');
+    },
+
+    async clickBody(data: { side: string; count: number }): Promise<void> {
+      await runInHitWindow(`window.petHitAPI.click(${JSON.stringify(data)})`);
+    },
+
+    async setHitIgnoreMouseEvents(ignore: boolean): Promise<void> {
+      const arg = ignore ? 'true, { forward: true }' : 'false';
+      await runInHitWindow(`window.petHitAPI.setIgnoreMouseEvents(${arg})`);
+    },
+
+    /**
+     * Run the real `pet:set-ignore-mouse-events` handler synchronously.
+     * The hit-window watchdog keys off the flag that handler stores; calling
+     * it here avoids a renderer round-trip racing the 250ms poll.
+     */
+    forceHitIgnore(ignore: boolean): boolean {
+      const options = ignore ? { forward: true } : undefined;
+      ipcMain.emit('pet:set-ignore-mouse-events', null, ignore, options);
+      return lastHitIgnoreState;
+    },
+
+    async reset(): Promise<void> {
+      destroyPetWindow();
+      currentSize = 280;
+      confirmBubbleEnabled = true;
+      drawIgnoresMouse = true;
+      await ProcessConfig.set('pet.enabled', false);
+      await ProcessConfig.set('pet.size', 280);
+      await ProcessConfig.set('pet.dnd', false);
+    },
+  };
+
+  (globalThis as typeof globalThis & { [PET_E2E_GLOBAL]?: typeof api })[PET_E2E_GLOBAL] = api;
+}
+
+installPetE2EApi();
