@@ -35,8 +35,9 @@ if (!bin) {
 
 const argv = process.argv.slice(2);
 const portFlag = argv.indexOf('--port');
-const publicPort = portFlag >= 0 ? Number(argv[portFlag + 1]) : NaN;
-if (!Number.isInteger(publicPort) || publicPort <= 0) {
+// The launcher asks for port 0 and adopts whatever AIONCORE_LISTENING reports.
+let publicPort = portFlag >= 0 ? Number(argv[portFlag + 1]) : NaN;
+if (!Number.isInteger(publicPort) || publicPort < 0 || publicPort > 65535) {
   console.error('backendWsProxy: missing --port');
   process.exit(1);
 }
@@ -313,6 +314,8 @@ readyTimeout.unref();
 await new Promise((resolve, reject) => {
   server.once('error', reject);
   server.listen(publicPort, '127.0.0.1', () => {
+    const address = server.address();
+    publicPort = address && typeof address === 'object' ? address.port : 0;
     proxyListening = true;
     resolve();
   });
