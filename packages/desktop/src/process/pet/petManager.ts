@@ -16,6 +16,8 @@ import {
   updateAnchorBounds,
   destroyPetConfirmManager,
   unhookPetConfirm,
+  showPetPermission,
+  dismissPetPermissions,
 } from './petConfirmManager';
 import type { PetSize, PetState } from './petTypes';
 
@@ -170,6 +172,14 @@ export function createPetWindow(): void {
   stateMachine = new PetStateMachine();
   idleTicker = new PetIdleTicker(stateMachine);
   eventBridge = new PetEventBridge(stateMachine, idleTicker);
+  eventBridge.setPermissionHooks({
+    onOpen: (bubble) => {
+      showPetPermission(bubble);
+    },
+    onClose: (ids) => {
+      dismissPetPermissions(ids);
+    },
+  });
 
   stateMachine.onStateChange((state: PetState) => {
     if (petWindow && !petWindow.isDestroyed()) {

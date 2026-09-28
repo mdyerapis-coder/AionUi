@@ -14,11 +14,14 @@ interface PetHitAPI {
 }
 
 interface PetConfirmAPI {
-  onConfirmationAdd: (callback: (data: any) => void) => void;
-  onConfirmationUpdate: (callback: (data: any) => void) => void;
-  onConfirmationRemove: (callback: (data: any) => void) => void;
+  onConfirmationAdd: (callback: (data: import('@/common/chat/petPermission').PetPermissionConfirmView) => void) => void;
+  onConfirmationUpdate: (
+    callback: (data: import('@/common/chat/petPermission').PetPermissionConfirmView) => void
+  ) => void;
+  onConfirmationRemove: (callback: (data: { id: string }) => void) => void;
+  onConfirmError: (callback: (data: { id: string }) => void) => void;
   onThemeChange: (callback: (theme: import('@/common/theme/types').Theme) => void) => void;
-  respond: (data: { conversation_id: string; msg_id: string; call_id: string; data: any }) => void;
+  respond: (data: { id: string; optionId: string }) => void;
   dragStart: () => void;
   dragEnd: () => void;
 }
