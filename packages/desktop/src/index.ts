@@ -956,9 +956,9 @@ const handleAppReady = async (): Promise<void> => {
             // Read pet sub-settings before creating the pet so flags are honored
             // on the first createPetWindow() call (which is sync).
             const confirmEnabled = (await ProcessConfig.get('pet.confirmEnabled')) ?? true;
-            const { createPetWindow, setPetConfirmEnabled } = await import('./process/pet/petManager');
+            const { openPetFromSavedPreferences, setPetConfirmEnabled } = await import('./process/pet/petManager');
             setPetConfirmEnabled(confirmEnabled);
-            createPetWindow();
+            await openPetFromSavedPreferences();
           }
         } catch (error) {
           console.error('[Pet] Failed to initialize:', error);

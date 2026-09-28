@@ -6,7 +6,9 @@
 
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron';
+import { systemSettings } from '@/common/adapter/ipcBridge';
 import i18n from '@process/services/i18n';
+import { ProcessConfig } from '@process/utils/initStorage';
 import { PetStateMachine } from './petStateMachine';
 import { PetIdleTicker } from './petIdleTicker';
 import { PetEventBridge } from './petEventBridge';
@@ -17,6 +19,14 @@ import {
   destroyPetConfirmManager,
   unhookPetConfirm,
 } from './petConfirmManager';
+import {
+  isPetPoint,
+  normalizePetSize,
+  petPointsWithin,
+  petPositionReadToSave,
+  resolvePetPosition,
+  type PetPoint,
+} from './petPlacement';
 import type { PetSize, PetState } from './petTypes';
 
 /**
@@ -45,6 +55,12 @@ let stateMachine: PetStateMachine | null = null;
 let idleTicker: PetIdleTicker | null = null;
 let eventBridge: PetEventBridge | null = null;
 let currentSize: PetSize = 280;
+let currentDnd = false;
+let savedPosition: PetPoint | null = null;
+/** Last coordinates setPosition was asked to apply during the current drag. */
+let lastRequestedPosition: PetPoint | null = null;
+/** Window position read when the current drag started. Used to detect an ignored move. */
+let positionBeforeMove: PetPoint | null = null;
 let dragTimer: ReturnType<typeof setInterval> | null = null;
 let dragWatchdog: ReturnType<typeof setTimeout> | null = null;
 let dragOffsetX = 0;
@@ -104,7 +120,7 @@ export function createPetWindow(): void {
     return;
   }
 
-  const { x, y } = computeInitialPosition(currentSize);
+  const { x, y } = resolveStartupPosition(currentSize);
 
   // Rendering window (transparent, always on top, ignores mouse events)
   petWindow = new BrowserWindow({
@@ -167,6 +183,7 @@ export function createPetWindow(): void {
 
   // Initialize state machine, idle ticker, and event bridge
   stateMachine = new PetStateMachine();
+  stateMachine.setDnd(currentDnd);
   idleTicker = new PetIdleTicker(stateMachine);
   eventBridge = new PetEventBridge(stateMachine, idleTicker);
 
@@ -246,6 +263,8 @@ export function destroyPetWindow(): void {
     petWindow.destroy();
   }
   petWindow = null;
+  lastRequestedPosition = null;
+  positionBeforeMove = null;
 
   console.log('[Pet] Pet windows destroyed');
 }
@@ -265,10 +284,78 @@ export function getEventBridge(): PetEventBridge | null {
 }
 
 export function resizePetWindow(size: PetSize): void {
-  resizePet(size);
+  void commitPetSize(size).catch(() => {
+    // commitPetSize already logged the failure and restored the previous size.
+  });
 }
 
 export function setPetDndMode(dnd: boolean): void {
+  void commitPetDnd(dnd).catch(() => {
+    // commitPetDnd already logged the failure and restored the previous mode.
+  });
+}
+
+/**
+ * Read saved size, do-not-disturb, and position, then show the pet.
+ * Used at startup and when the user turns the pet back on, so a disable/enable
+ * toggle restores the same preferences as a restart.
+ */
+export async function openPetFromSavedPreferences(): Promise<void> {
+  await loadAndApplySavedPetPreferences();
+  createPetWindow();
+}
+
+/** Load pet.size, pet.dnd, and pet.position into the in-memory pet state. */
+export async function loadAndApplySavedPetPreferences(): Promise<void> {
+  const [size, dnd, position] = await Promise.all([
+    ProcessConfig.get('pet.size'),
+    ProcessConfig.get('pet.dnd'),
+    ProcessConfig.get('pet.position'),
+  ]);
+  const normalized = normalizePetSize(size);
+  if (normalized) currentSize = normalized;
+  if (typeof dnd === 'boolean') currentDnd = dnd;
+  savedPosition = isPetPoint(position) ? { x: position.x, y: position.y } : null;
+}
+
+/**
+ * Apply a size from Settings, the pet menu, or the tray, and persist it.
+ * The main process is the only writer; the renderer hears about it through
+ * `petPreferencesChanged`.
+ */
+export async function commitPetSize(size: number): Promise<void> {
+  const normalized = normalizePetSize(size);
+  if (!normalized) {
+    throw new Error(`Invalid pet size: ${String(size)}`);
+  }
+  const previous = currentSize;
+  resizePet(normalized);
+  try {
+    await ProcessConfig.set('pet.size', normalized);
+  } catch (error) {
+    console.error('[Pet] Failed to persist pet size:', error);
+    resizePet(previous);
+    throw error;
+  }
+  systemSettings.petPreferencesChanged.emit({ size: normalized });
+}
+
+/** Apply do-not-disturb from Settings or the pet menu, and persist it. */
+export async function commitPetDnd(dnd: boolean): Promise<void> {
+  const previous = currentDnd;
+  applyDnd(dnd);
+  try {
+    await ProcessConfig.set('pet.dnd', dnd);
+  } catch (error) {
+    console.error('[Pet] Failed to persist pet do-not-disturb:', error);
+    applyDnd(previous);
+    throw error;
+  }
+  systemSettings.petPreferencesChanged.emit({ dnd });
+}
+
+function applyDnd(dnd: boolean): void {
+  currentDnd = dnd;
   stateMachine?.setDnd(dnd);
 }
 
@@ -286,9 +373,11 @@ export function setPetConfirmEnabled(enabled: boolean): void {
 
   if (enabled) {
     // Late-enable: install the hook so future confirmations route to the bubble.
-    // Use the current pet bounds as the initial anchor.
-    const [x, y] = petWindow.getPosition();
-    initPetConfirmManager({ x, y, width: currentSize, height: currentSize });
+    // Use the current pet bounds as the initial anchor. A failed position read
+    // (native Wayland can no-op these calls) skips the anchor instead of throwing.
+    const position = readPetPosition();
+    if (!position) return;
+    initPetConfirmManager({ x: position.x, y: position.y, width: currentSize, height: currentSize });
   }
   // Late-disable: leave the existing confirm window (if any) alone — it will
   // self-destroy after the user responds to the current confirmation. New
@@ -299,13 +388,11 @@ export function setPetConfirmEnabled(enabled: boolean): void {
 }
 
 /**
- * Compute the pet's starting bottom-right position on the display that
- * currently hosts the main AionUi window. Falls back to the primary display
- * when no main window is found (e.g. tray-only scenarios). This is the only
- * position logic at startup — after creation the user is free to drag the
- * pet anywhere and we never overwrite it for the rest of the session.
+ * Default bottom-right placement on the display that currently hosts the main
+ * AionUi window. Falls back to the primary display when no main window is
+ * found (e.g. tray-only scenarios).
  */
-function computeInitialPosition(size: number): { x: number; y: number } {
+function computeInitialPosition(size: number): PetPoint {
   const margin = 20;
 
   // Prefer the display under the main window's center so multi-monitor users
@@ -331,6 +418,19 @@ function computeInitialPosition(size: number): { x: number; y: number } {
     x: workArea.x + workArea.width - size - margin,
     y: workArea.y + workArea.height - size - margin,
   };
+}
+
+/** Saved position when it still fits on a display; otherwise the default corner. */
+function resolveStartupPosition(size: number): PetPoint {
+  return resolvePetPosition({
+    saved: savedPosition,
+    size,
+    displays: screen.getAllDisplays().map((display) => ({
+      bounds: display.bounds,
+      workArea: display.workArea,
+    })),
+    fallback: computeInitialPosition(size),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -375,9 +475,13 @@ function registerIpcHandlers(): void {
     }
 
     const cursor = screen.getCursorScreenPoint();
-    const windowPos = petWindow.getPosition();
-    dragOffsetX = cursor.x - windowPos[0];
-    dragOffsetY = cursor.y - windowPos[1];
+    const windowPos = readPetPosition();
+    // Position APIs can throw or no-op on native Wayland. Skip the drag rather
+    // than computing an offset from garbage coordinates.
+    if (!windowPos) return;
+    positionBeforeMove = windowPos;
+    dragOffsetX = cursor.x - windowPos.x;
+    dragOffsetY = cursor.y - windowPos.y;
 
     // Snapshot AI activity state so we can restore it after drag ends
     const cur = stateMachine?.getCurrentState();
@@ -391,16 +495,19 @@ function registerIpcHandlers(): void {
         return;
       }
 
-      const cursor = screen.getCursorScreenPoint();
-      const newX = cursor.x - dragOffsetX;
-      const newY = cursor.y - dragOffsetY;
-
-      petWindow.setPosition(newX, newY, false);
-
-      const hitOffset = Math.round(currentSize * 0.2);
-      petHitWindow.setPosition(newX + hitOffset, newY + hitOffset, false);
-
-      idleTicker?.setPetBounds(newX, newY, currentSize, currentSize);
+      try {
+        const dragCursor = screen.getCursorScreenPoint();
+        const newX = dragCursor.x - dragOffsetX;
+        const newY = dragCursor.y - dragOffsetY;
+        const moved = safeSetPosition(petWindow, newX, newY);
+        const hitOffset = Math.round(currentSize * 0.2);
+        safeSetPosition(petHitWindow, newX + hitOffset, newY + hitOffset);
+        if (!moved) return;
+        lastRequestedPosition = { x: newX, y: newY };
+        idleTicker?.setPetBounds(newX, newY, currentSize, currentSize);
+      } catch (error) {
+        console.warn('[Pet] drag tick failed:', error);
+      }
     }, DRAG_TICK_MS);
 
     dragWatchdog = setTimeout(() => {
@@ -460,16 +567,22 @@ function registerIpcHandlers(): void {
           label: i18n.t(sizeKeys[size], { px: size }),
           type: 'radio' as const,
           checked: currentSize === size,
-          click: () => resizePet(size),
+          click: () => {
+            void commitPetSize(size).catch(() => {
+              // commitPetSize already logged the failure and restored the previous size.
+            });
+          },
         })),
       },
       { type: 'separator' },
       {
         label: i18n.t('pet.dnd'),
         type: 'checkbox',
-        checked: stateMachine?.getDnd() ?? false,
+        checked: stateMachine?.getDnd() ?? currentDnd,
         click: (menuItem) => {
-          stateMachine?.setDnd(menuItem.checked);
+          void commitPetDnd(menuItem.checked).catch(() => {
+            // commitPetDnd already logged the failure and restored the previous mode.
+          });
         },
       },
       { type: 'separator' },
@@ -565,11 +678,18 @@ function endDrag(): void {
   clearDragTimer();
   const restoreTo: PetState = preDragState ?? 'idle';
   preDragState = null;
+  const requested = lastRequestedPosition;
+  const before = positionBeforeMove;
+  lastRequestedPosition = null;
+  positionBeforeMove = null;
   stateMachine?.forceState(restoreTo);
   idleTicker?.resetIdle();
   if (petWindow && !petWindow.isDestroyed()) {
-    const [nx, ny] = petWindow.getPosition();
-    updateAnchorBounds({ x: nx, y: ny, width: currentSize, height: currentSize });
+    const actual = readPetPosition();
+    if (actual) {
+      updateAnchorBounds({ x: actual.x, y: actual.y, width: currentSize, height: currentSize });
+    }
+    persistPositionIfReliable(before, requested, actual);
   }
 }
 
@@ -604,8 +724,17 @@ function startHitIgnoreWatchdog(): void {
     // no longer inside the pet's circular body (plus slack), force it back
     // to ignore.
     const cursor = screen.getCursorScreenPoint();
-    const [wx, wy] = petHitWindow.getPosition();
-    const [ww, wh] = petHitWindow.getSize();
+    let wx: number;
+    let wy: number;
+    let ww: number;
+    let wh: number;
+    try {
+      [wx, wy] = petHitWindow.getPosition();
+      [ww, wh] = petHitWindow.getSize();
+    } catch (error) {
+      console.warn('[Pet] hit watchdog skipped; position read failed:', error);
+      return;
+    }
     const cxw = wx + ww / 2;
     const cyw = wy + wh / 2;
     const radius = (Math.min(ww, wh) / 2) * HIT_WATCHDOG_RADIUS_SLACK;
@@ -628,6 +757,7 @@ function stopHitIgnoreWatchdog(): void {
 }
 
 function resizePet(size: PetSize): void {
+  currentSize = size;
   if (!petWindow || petWindow.isDestroyed() || !petHitWindow || petHitWindow.isDestroyed()) return;
 
   // If the user resizes mid-drag, the in-flight drag timer would keep moving the
@@ -638,8 +768,14 @@ function resizePet(size: PetSize): void {
     endDrag();
   }
 
-  currentSize = size;
-  const [x, y] = petWindow.getPosition();
+  const read = readPetPosition();
+  if (!read) {
+    if (!petWindow.isDestroyed()) {
+      petWindow.webContents.send('pet:resize', size);
+    }
+    return;
+  }
+  const { x, y } = read;
 
   applyTransparentResize(petWindow, { x, y, width: size, height: size });
 
@@ -677,15 +813,73 @@ function resetPosition(): void {
   // Reset puts the pet back where createPetWindow would have put it for a
   // fresh launch — the bottom-right of the display that currently hosts the
   // main AionUi window.
-  const { x, y } = computeInitialPosition(currentSize);
-
-  petWindow.setPosition(x, y, false);
+  const before = readPetPosition();
+  const target = computeInitialPosition(currentSize);
+  const moved = safeSetPosition(petWindow, target.x, target.y);
 
   const hitOffset = Math.round(currentSize * 0.2);
-  petHitWindow.setPosition(x + hitOffset, y + hitOffset, false);
+  safeSetPosition(petHitWindow, target.x + hitOffset, target.y + hitOffset);
 
-  idleTicker?.setPetBounds(x, y, currentSize, currentSize);
+  const actual = readPetPosition();
+  const landed = actual ?? before;
+  if (landed) {
+    idleTicker?.setPetBounds(landed.x, landed.y, currentSize, currentSize);
+    updateAnchorBounds({ x: landed.x, y: landed.y, width: currentSize, height: currentSize });
+  }
+  if (moved) {
+    persistPositionIfReliable(before, target, actual);
+  }
+}
 
-  // Update confirm window anchor
-  updateAnchorBounds({ x, y, width: currentSize, height: currentSize });
+function readPetPosition(): PetPoint | null {
+  if (!petWindow || petWindow.isDestroyed()) return null;
+  return readWindowPoint(petWindow);
+}
+
+/**
+ * Read the window's real origin. `getBounds` and `getPosition` must agree;
+ * a disagreement is not a position we can store. Either call may throw or
+ * no-op on native Wayland, and a failure of one falls through to the other.
+ */
+function readWindowPoint(win: BrowserWindow): PetPoint | null {
+  let fromBounds: PetPoint | null = null;
+  let fromPosition: PetPoint | null = null;
+  try {
+    const bounds = win.getBounds();
+    if (isPetPoint(bounds)) fromBounds = { x: bounds.x, y: bounds.y };
+  } catch (error) {
+    console.warn('[Pet] getBounds failed:', error);
+  }
+  try {
+    const [x, y] = win.getPosition();
+    if (Number.isFinite(x) && Number.isFinite(y)) fromPosition = { x, y };
+  } catch (error) {
+    console.warn('[Pet] getPosition failed:', error);
+  }
+  if (fromBounds && fromPosition) {
+    if (!petPointsWithin(fromBounds, fromPosition)) return null;
+    return fromBounds;
+  }
+  return fromBounds ?? fromPosition;
+}
+
+function safeSetPosition(win: BrowserWindow, x: number, y: number): boolean {
+  try {
+    win.setPosition(Math.round(x), Math.round(y), false);
+    return true;
+  } catch (error) {
+    console.warn('[Pet] setPosition failed:', error);
+    return false;
+  }
+}
+
+function persistPositionIfReliable(before: PetPoint | null, requested: PetPoint | null, actual: PetPoint | null): void {
+  const point = petPositionReadToSave(before, requested, actual);
+  if (!point) return;
+  const previous = savedPosition;
+  savedPosition = point;
+  void ProcessConfig.set('pet.position', point).catch((error) => {
+    savedPosition = previous;
+    console.error('[Pet] Failed to persist pet position:', error);
+  });
 }

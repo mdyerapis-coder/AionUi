@@ -75,6 +75,8 @@ export interface IConfigStorageRefer {
   // Desktop Pet: whether tool-call confirmations are routed to the pet's bubble
   // (true) or remain in the main chat window (false). Default true.
   'pet.confirmEnabled'?: boolean;
+  // Desktop Pet: last window position, restored when it still lies on a display.
+  'pet.position'?: { x: number; y: number };
 }
 
 /**
