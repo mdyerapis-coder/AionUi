@@ -736,4 +736,22 @@ describe('pet realtime socket', () => {
       });
     });
   });
+
+  describe('stacked activity', () => {
+    it('shows a live conversation ahead of a finished turn on the same socket', async () => {
+      await withFixture(async ({ sm, send }) => {
+        await send(conversation.responseStream, stream('finish', null));
+        await expectState(sm, 'done');
+
+        await send(
+          conversation.responseStream,
+          stream('text', 'still going', { conversation_id: 'conv-2', turn_id: 'turn-2' })
+        );
+        await expectState(sm, 'working');
+
+        await send(conversation.responseStream, stream('acp_permission', { session_id: 'conv-1' }));
+        expect(sm.getCurrentState()).toBe('working');
+      });
+    });
+  });
 });

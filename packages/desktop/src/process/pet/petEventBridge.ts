@@ -9,16 +9,41 @@ import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { isErrorTipMessage } from '@/common/chat/chatLib';
 import type { PetStateMachine } from './petStateMachine';
 import type { PetIdleTicker } from './petIdleTicker';
-import type { PetState } from './petTypes';
+import { AUTO_RETURN, type PetState, type StateChangeCallback } from './petTypes';
 
 /**
  * Conversation and turn that produced the latest mapped frame.
- * A follow-up can ignore stale Codex frames for the same `turnId` without
- * parsing the socket payload again. This bridge does not apply that guard.
+ * Once that turn is finished, later non-terminal frames with the same
+ * `turnId` are ignored. Frames with no `turnId` skip the guard.
  */
 export type PetActivityContext = {
   conversationId?: string;
   turnId?: string;
+};
+
+/** Frames that are not a finished or failed turn. Late copies of these are ignored. */
+const NON_TERMINAL_STATES: ReadonlySet<PetState> = new Set(['thinking', 'working', 'notification']);
+
+/**
+ * What the pet should show when several conversations are active.
+ * Needs confirmation, then error, then working or thinking (latest event wins
+ * a tie), then done. Idle means the conversation is not in the set.
+ */
+const ACTIVITY_RANK: Partial<Record<PetState, number>> = {
+  notification: 4,
+  error: 3,
+  working: 2,
+  thinking: 2,
+  done: 1,
+};
+
+/** Events with no conversation id share one slot, matching the old single pet. */
+const ANONYMOUS_CONVERSATION = '\0';
+
+type ActivitySlot = {
+  state: PetState;
+  seq: number;
+  timer: ReturnType<typeof setTimeout> | null;
 };
 
 const ACP_TOOL_ACTIVE = new Set(['pending', 'in_progress']);
@@ -33,11 +58,22 @@ const TOOL_GROUP_WORKING = new Set(['Executing', 'Pending']);
 export class PetEventBridge {
   private disposed = false;
   private activity: PetActivityContext | undefined;
+  private readonly slots = new Map<string, ActivitySlot>();
+  private readonly finishedTurns = new Set<string>();
+  private seq = 0;
+  /** True while this bridge is itself changing the machine, so restore does not recurse. */
+  private publishing = false;
+  private readonly onMachineState: StateChangeCallback;
 
   constructor(
     private sm: PetStateMachine,
     private ticker: PetIdleTicker
-  ) {}
+  ) {
+    this.onMachineState = (state) => {
+      this.restoreActivityAfterLocalIdle(state);
+    };
+    this.sm.onStateChange(this.onMachineState);
+  }
 
   /**
    * Latest frame that mapped to a pet state.
@@ -85,8 +121,11 @@ export class PetEventBridge {
     }
   }
 
-  /** User send, or a stream `start` when no user bubble was emitted. */
+  /** User send, or a stream `start` when no user bubble was emitted. A send starts the turn fresh. */
   handleUserSendMessage(context?: PetActivityContext): void {
+    if (!this.disposed && !this.sm.getDnd() && context?.conversationId && context.turnId) {
+      this.finishedTurns.delete(finishedTurnKey(context.conversationId, context.turnId));
+    }
     this.apply('thinking', context);
   }
 
@@ -102,6 +141,11 @@ export class PetEventBridge {
 
   dispose(): void {
     this.disposed = true;
+    this.sm.offStateChange(this.onMachineState);
+    for (const slot of this.slots.values()) {
+      if (slot.timer) clearTimeout(slot.timer);
+    }
+    this.slots.clear();
   }
 
   private onUserCreated(data: unknown): void {
@@ -168,10 +212,99 @@ export class PetEventBridge {
 
   private apply(state: PetState, context?: PetActivityContext): void {
     if (this.disposed) return;
-    if (context) this.activity = context;
+    // Do-not-disturb already rejects the visual change inside the state machine.
+    // Keep the same side effect as before: remember the frame, do not track it.
+    if (this.sm.getDnd()) {
+      this.ticker.resetIdle();
+      if (context) this.activity = context;
+      return;
+    }
+    if (this.isLateFrame(state, context)) return;
+
     this.ticker.resetIdle();
-    this.sm.requestState(state);
+    if (context) this.activity = context;
+    if (context?.conversationId && context.turnId && (state === 'done' || state === 'error')) {
+      this.finishedTurns.add(finishedTurnKey(context.conversationId, context.turnId));
+    }
+    this.upsertSlot(context?.conversationId, state);
+    this.publish();
   }
+
+  /** A finished turn ignores later thinking, working, and confirmation frames with that id. */
+  private isLateFrame(state: PetState, context?: PetActivityContext): boolean {
+    const conversationId = context?.conversationId;
+    const turnId = context?.turnId;
+    if (!conversationId || !turnId) return false;
+    if (!NON_TERMINAL_STATES.has(state)) return false;
+    return this.finishedTurns.has(finishedTurnKey(conversationId, turnId));
+  }
+
+  private upsertSlot(conversationId: string | undefined, state: PetState): void {
+    const key = conversationId ?? ANONYMOUS_CONVERSATION;
+    const previous = this.slots.get(key);
+    if (previous?.timer) clearTimeout(previous.timer);
+    const slot: ActivitySlot = { state, seq: ++this.seq, timer: null };
+    this.slots.set(key, slot);
+    this.armSlotTimer(key, slot);
+  }
+
+  private armSlotTimer(key: string, slot: ActivitySlot): void {
+    const ar = AUTO_RETURN[slot.state];
+    if (!ar) return;
+    const seq = slot.seq;
+    slot.timer = setTimeout(() => {
+      if (this.disposed) return;
+      const current = this.slots.get(key);
+      if (!current || current.seq !== seq) return;
+      current.timer = null;
+      this.slots.delete(key);
+      // setDnd already froze the on-screen return. Skip publishing so that
+      // pose stays put. The slot is gone, so it cannot reappear later.
+      if (this.sm.getDnd()) return;
+      this.publish();
+    }, ar.delayMs);
+  }
+
+  private publish(): void {
+    const winner = this.pickWinner();
+    this.publishing = true;
+    try {
+      this.sm.presentActivity(winner ?? 'idle');
+    } finally {
+      this.publishing = false;
+    }
+  }
+
+  /**
+   * A pat, poke, or other local pose returns to idle on its own timer.
+   * If a conversation is still active, show it again instead of leaving the pet idle.
+   */
+  private restoreActivityAfterLocalIdle(state: PetState): void {
+    if (this.publishing || this.disposed || state !== 'idle') return;
+    const winner = this.pickWinner();
+    if (!winner) return;
+    this.publishing = true;
+    try {
+      this.sm.presentActivity(winner);
+    } finally {
+      this.publishing = false;
+    }
+  }
+
+  private pickWinner(): PetState | null {
+    let best: { state: PetState; rank: number; seq: number } | null = null;
+    for (const slot of this.slots.values()) {
+      const rank = ACTIVITY_RANK[slot.state] ?? 0;
+      if (!best || rank > best.rank || (rank === best.rank && slot.seq > best.seq)) {
+        best = { state: slot.state, rank, seq: slot.seq };
+      }
+    }
+    return best?.state ?? null;
+  }
+}
+
+function finishedTurnKey(conversationId: string, turnId: string): string {
+  return `${conversationId}\0${turnId}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
