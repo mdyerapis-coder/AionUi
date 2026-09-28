@@ -1,23 +1,26 @@
 /**
  * Pet reactions to an agent run.
  *
- * Events are emitted with `bridge.emit` on the channels a real run uses
- * (`message.stream`, `message.userCreated`, `turn.completed`). The assertions
- * name the animation the pet should show. Where the bridge still listens on
- * the old channel names, or never opens the confirm window, the test is marked
- * `test.fail()` so the suite stays green until that fix lands.
+ * Frames are published on the backend WebSocket the app is connected to
+ * (`/ws`), in the shapes aioncore sends: `{ name, data }` and `{ event, payload }`.
+ * Hermes, Claude Code, and Codex share ACP `message.stream`. The pet main
+ * process does not subscribe to that socket today, so a reaction that should
+ * leave idle is `test.fail()`. Assertions that correctly stay idle are real
+ * passes: marking them failing would go red for the wrong reason.
+ *
+ * Nothing here calls the state machine or `bridge.emit`.
  */
-import { test, expect } from '../fixtures';
+import { test, expect, type ElectronApplication } from '../fixtures';
 import { invokeBridge } from '../helpers';
 import {
   clickPet,
-  emitAgentEvent,
+  dropBackendSockets,
   enablePet,
   invokeContextItem,
   petSnapshot,
+  publishWsFrame,
   readPetAppearance,
   resetPet,
-  streamMessage,
 } from './helpers';
 
 test.describe.configure({ timeout: 120_000 });
@@ -32,13 +35,105 @@ test.afterAll(async ({ page, electronApp }) => {
 
 const idle = { state: 'idle', rendered: 'idle' };
 
+/** pet does not subscribe to backend /ws yet */
+const NOT_SUBSCRIBED = 'pet does not subscribe to backend /ws yet';
+
 async function expectAppearance(
-  electronApp: Parameters<typeof readPetAppearance>[0],
+  electronApp: ElectronApplication,
   appearance: { state: string; rendered: string },
   timeout = 2_000
 ): Promise<void> {
   await expect.poll(async () => readPetAppearance(electronApp), { timeout }).toEqual(appearance);
 }
+
+type Envelope = 'name' | 'event';
+
+async function publish(
+  electronApp: ElectronApplication,
+  channel: string,
+  data: unknown,
+  envelope: Envelope = 'name'
+): Promise<void> {
+  if (envelope === 'event') {
+    await publishWsFrame(electronApp, { event: channel, payload: data });
+    return;
+  }
+  await publishWsFrame(electronApp, { name: channel, data });
+}
+
+function stream(
+  type: string,
+  options?: { conversationId?: string; turnId?: string; msgId?: string; data?: unknown }
+): Record<string, unknown> {
+  return {
+    type,
+    conversation_id: options?.conversationId ?? 'e2e-pet',
+    msg_id: options?.msgId ?? `e2e-${type}-${options?.turnId ?? 'turn-1'}`,
+    turn_id: options?.turnId ?? 'turn-1',
+    data: options?.data ?? {},
+  };
+}
+
+function userCreated(hidden: boolean): Record<string, unknown> {
+  return {
+    conversation_id: 'e2e-pet',
+    msg_id: hidden ? 'e2e-user-hidden' : 'e2e-user',
+    content: 'hello',
+    position: 'right',
+    status: 'finish',
+    hidden,
+    created_at: Date.now(),
+  };
+}
+
+function turnCompleted(state: string, turnId: string, conversationId = 'e2e-pet'): Record<string, unknown> {
+  return {
+    conversation_id: conversationId,
+    session_id: conversationId,
+    turn_id: turnId,
+    status: 'finished',
+    state,
+  };
+}
+
+const toolCall = stream('acp_tool_call', {
+  data: {
+    update: {
+      sessionUpdate: 'tool_call',
+      status: 'in_progress',
+      toolCallId: 'call-1',
+      title: 'Read file',
+    },
+  },
+});
+
+const toolGroup = stream('tool_group', {
+  data: [
+    {
+      call_id: 'call-1',
+      description: 'list files',
+      name: 'shell',
+      render_output_as_markdown: false,
+      status: 'Executing',
+    },
+  ],
+});
+
+const permission = stream('acp_permission', {
+  data: {
+    session_id: 'e2e-pet',
+    options: [{ option_id: 'allow', name: 'Allow', kind: 'allow_once' }],
+    tool_call: { tool_call_id: 'call-1', title: 'Run command', status: 'pending' },
+  },
+});
+
+const confirmation = {
+  id: 'conf-1',
+  call_id: 'call-1',
+  conversation_id: 'e2e-pet',
+  description: 'Allow this command?',
+  options: [{ label: 'Allow', value: 'allow' }],
+};
 
 test.describe('pet agent reactions', () => {
   test('a new pet starts idle', async ({ page, electronApp }) => {
@@ -46,67 +141,87 @@ test.describe('pet agent reactions', () => {
     await expectAppearance(electronApp, idle);
   });
 
-  test('an unrelated bridge event leaves the pet idle', async ({ page, electronApp }) => {
+  test('an install-progress event leaves the pet idle', async ({ page, electronApp }) => {
     await enablePet(page, electronApp);
-    await emitAgentEvent(electronApp, 'not.a.pet.channel', streamMessage('thinking'));
+    await publish(electronApp, 'runtime.statusChanged', {
+      resource: 'node',
+      scope: { kind: 'app', id: 'e2e' },
+      phase: 'installing',
+    });
+    await expectAppearance(electronApp, idle, 800);
+  });
+
+  test('a hidden user message leaves the pet idle', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'message.userCreated', userCreated(true));
+    // Stays idle today because nothing is listening. After the pet subscribes,
+    // hidden userCreated is still not a user send.
     await expectAppearance(electronApp, idle, 800);
   });
 
   test('shows thinking when the user sends a message', async ({ page, electronApp }) => {
     await enablePet(page, electronApp);
-    // Bug: the bridge never handles message.userCreated, so a sent message does not wake the pet.
-    test.fail(true, 'Bug: petEventBridge ignores message.userCreated, so a sent message never shows thinking.');
-    await emitAgentEvent(electronApp, 'message.userCreated', {
-      conversation_id: 'e2e-pet',
-      msg_id: 'e2e-user',
-      content: 'hello',
-      position: 'right',
-      status: 'finish',
-      hidden: false,
-      created_at: Date.now(),
-    });
+    // { event, payload } so a client that only reads `name` / `data` still fails.
+    await publish(electronApp, 'message.userCreated', userCreated(false), 'event');
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
     await expectAppearance(electronApp, { state: 'thinking', rendered: 'thinking' });
   });
 
   test('shows thinking while the agent is thinking', async ({ page, electronApp }) => {
     await enablePet(page, electronApp);
-    // Bug: the bridge listens on chat.response.stream / openclaw.response.stream, not message.stream.
-    test.fail(true, 'Bug: petEventBridge listens on the old stream channels, not message.stream.');
-    await emitAgentEvent(electronApp, 'message.stream', streamMessage('thinking'));
+    await publish(electronApp, 'message.stream', stream('thinking', { data: { content: 'hmm', status: 'thinking' } }));
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
     await expectAppearance(electronApp, { state: 'thinking', rendered: 'thinking' });
   });
 
   test('shows working while the agent is streaming text', async ({ page, electronApp }) => {
     await enablePet(page, electronApp);
-    test.fail(true, 'Bug: petEventBridge listens on the old stream channels, not message.stream.');
-    await emitAgentEvent(electronApp, 'message.stream', streamMessage('text'));
+    await publish(electronApp, 'message.stream', stream('text', { data: { content: 'partial answer' } }));
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
     await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
   });
 
-  test('shows working during a tool call', async ({ page, electronApp }) => {
+  test('shows working during an acp tool call', async ({ page, electronApp }) => {
     await enablePet(page, electronApp);
-    // Bug: tool-call frames on message.stream are not mapped to an animation.
-    test.fail(true, 'Bug: petEventBridge does not map tool-call frames (acp_tool_call) on message.stream.');
-    await emitAgentEvent(electronApp, 'message.stream', streamMessage('acp_tool_call'));
+    await publish(electronApp, 'message.stream', toolCall);
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
     await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
   });
 
-  test('shows the notification animation when a tool needs confirmation', async ({ page, electronApp }) => {
+  test('shows working during a tool group', async ({ page, electronApp }) => {
     await enablePet(page, electronApp);
-    // Bug: real permission requests arrive as message.stream types, which the bridge does not read.
-    test.fail(
-      true,
-      'Bug: petEventBridge does not map message.stream permission frames (acp_permission) to notification.'
-    );
-    await emitAgentEvent(electronApp, 'message.stream', streamMessage('acp_permission'));
+    await publish(electronApp, 'message.stream', toolGroup, 'event');
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+  });
+
+  test('shows the needs-confirmation state for an acp permission', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'message.stream', permission);
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'notification', rendered: 'notification' });
+  });
+
+  test('shows the needs-confirmation state for confirmation.add', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'confirmation.add', confirmation, 'event');
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
     await expectAppearance(electronApp, { state: 'notification', rendered: 'notification' });
   });
 
   test('opens the confirm bubble when a tool needs confirmation', async ({ page, electronApp }) => {
     await enablePet(page, electronApp);
-    // Bug: showConfirmation is never called, so the confirm window stays uncreated.
-    test.fail(true, 'Bug: showConfirmation is dead code, so a permission request never opens the confirm bubble.');
-    await emitAgentEvent(electronApp, 'message.stream', streamMessage('acp_permission'));
+    await publish(electronApp, 'message.stream', permission);
+    // pet does not subscribe to backend /ws yet. showConfirmation is also never
+    // called, so the bubble stays closed after the socket lands until that path runs.
+    test.fail(true, NOT_SUBSCRIBED);
     await expect
       .poll(
         async () => {
@@ -120,30 +235,154 @@ test.describe('pet agent reactions', () => {
 
   test('shows done when the agent finishes the turn', async ({ page, electronApp }) => {
     await enablePet(page, electronApp);
-    test.fail(true, 'Bug: petEventBridge listens on the old stream channels, not message.stream.');
-    await emitAgentEvent(electronApp, 'message.stream', streamMessage('finish'));
+    await publish(electronApp, 'message.stream', stream('finish'));
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
     await expectAppearance(electronApp, { state: 'done', rendered: 'done' });
   });
 
-  test('shows done when the turn-completed event arrives', async ({ page, electronApp }) => {
+  test('shows done when the turn completes', async ({ page, electronApp }) => {
     await enablePet(page, electronApp);
-    // Bug: turn.completed is not mapped; handleTurnCompleted is never called from the bridge.
-    test.fail(true, 'Bug: petEventBridge does not map turn.completed, so a finished turn never shows done.');
-    await emitAgentEvent(electronApp, 'turn.completed', {
-      conversation_id: 'e2e-pet',
-      session_id: 'e2e-pet',
-      turn_id: 'turn-1',
-      status: 'finished',
-      state: 'ai_waiting_input',
-    });
+    await publish(electronApp, 'turn.completed', turnCompleted('ai_waiting_input', 'turn-1'));
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
     await expectAppearance(electronApp, { state: 'done', rendered: 'done' });
   });
 
   test('shows error when the agent stream reports an error', async ({ page, electronApp }) => {
     await enablePet(page, electronApp);
-    test.fail(true, 'Bug: petEventBridge listens on the old stream channels, not message.stream.');
-    await emitAgentEvent(electronApp, 'message.stream', streamMessage('error'));
+    await publish(electronApp, 'message.stream', stream('error', { data: { message: 'boom' } }), 'event');
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
     await expectAppearance(electronApp, { state: 'error', rendered: 'error' });
+  });
+
+  test('a stopped turn is not an error', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'turn.completed', turnCompleted('stopped', 'turn-stopped'), 'event');
+    // Idle today. After the pet subscribes, stopped must resolve to idle or done, never error.
+    await expect
+      .poll(
+        async () => {
+          const appearance = await readPetAppearance(electronApp);
+          if (appearance.state === 'error' || appearance.rendered === 'error') return 'error';
+          if (
+            (appearance.state === 'idle' || appearance.state === 'done') &&
+            (appearance.rendered === 'idle' || appearance.rendered === 'done')
+          ) {
+            return 'settled';
+          }
+          return appearance.state;
+        },
+        { timeout: 800 }
+      )
+      .toBe('settled');
+  });
+
+  test('shows new activity on another turn right after done', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'message.stream', stream('finish', { turnId: 'turn-done' }));
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('content', { conversationId: 'conv-next', turnId: 'turn-next', data: { content: 'still going' } })
+    );
+    // pet does not subscribe to backend /ws yet. After it does, done (priority 5, held 3500ms)
+    // still swallows a following working state until that hold ends.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+  });
+
+  test('a repeated done refreshes its timer', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'message.stream', stream('finish', { turnId: 'turn-done-1' }));
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const mark = Date.now();
+    await publish(electronApp, 'message.stream', stream('finish', { turnId: 'turn-done-2' }));
+    // pet does not subscribe to backend /ws yet. requestState also ignores a repeat
+    // of the current state, so changedAt will stay put until a repeat refreshes it.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expect
+      .poll(
+        async () => {
+          const snap = await petSnapshot(electronApp);
+          return {
+            state: snap.state,
+            rendered: snap.renderedState,
+            refreshed: snap.stateChangedAt !== null && snap.stateChangedAt >= mark,
+          };
+        },
+        { timeout: 2_000 }
+      )
+      .toEqual({ state: 'done', rendered: 'done', refreshed: true });
+  });
+
+  test('ignores Codex tool frames that arrive after that turn finished', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    const turnId = 'turn-codex';
+    await publish(electronApp, 'message.stream', stream('finish', { turnId }));
+    // pet does not subscribe to backend /ws yet. The tool frame is sent only after
+    // done has returned to idle: during done, working loses on priority, so a frame
+    // published in that window cannot prove it was ignored.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'done', rendered: 'done' });
+    await expectAppearance(electronApp, idle, 6_000);
+    await publish(electronApp, 'message.stream', {
+      ...toolCall,
+      turn_id: turnId,
+      msg_id: 'e2e-codex-tool',
+    });
+    await expectAppearance(electronApp, idle, 1_000);
+  });
+
+  test('shows the most urgent state across two conversations', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    // Order is needs-confirmation, then error, then working, then done.
+    // A later done must not replace a confirmation that is still current.
+    // The state machine today ranks error above notification, so this stays wrong
+    // after the socket lands until that order is what the pet uses.
+    await publish(electronApp, 'message.stream', stream('finish', { conversationId: 'conv-a', turnId: 'turn-a-done' }));
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('text', { conversationId: 'conv-b', turnId: 'turn-b-text', data: { content: 'working' } })
+    );
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('error', { conversationId: 'conv-a', turnId: 'turn-a-error', data: { message: 'boom' } })
+    );
+    await publish(electronApp, 'message.stream', {
+      ...permission,
+      conversation_id: 'conv-b',
+      turn_id: 'turn-b-permission',
+      msg_id: 'e2e-permission-b',
+    });
+    await publish(electronApp, 'turn.completed', turnCompleted('ai_waiting_input', 'turn-a-done-again', 'conv-a'));
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'notification', rendered: 'notification' });
+  });
+
+  test('reconnects after the backend socket drops and still reacts', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('thinking', { turnId: 'turn-before', data: { content: 'before', status: 'thinking' } })
+    );
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'thinking', rendered: 'thinking' });
+    await dropBackendSockets(electronApp);
+    // Renderer reconnect backoff starts at 1s. The pet client has to be back before this publish.
+    await new Promise((resolve) => setTimeout(resolve, 2_500));
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('text', { turnId: 'turn-after', data: { content: 'after the restart' } })
+    );
+    await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
   });
 });
 
@@ -171,10 +410,14 @@ test.describe('pet do-not-disturb', () => {
     await enablePet(page, electronApp);
     await invokeBridge<void>(page, 'system-settings:set-pet-dnd', { dnd: true });
     await expect.poll(async () => (await petSnapshot(electronApp)).dnd, { timeout: 2_000 }).toBe(true);
-    await emitAgentEvent(electronApp, 'message.stream', streamMessage('thinking'));
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('thinking', { data: { content: 'ignored', status: 'thinking' } })
+    );
 
-    // Stays idle today because the stream channel is not wired. After that fix,
-    // the same assertion is the do-not-disturb guard inside requestState.
+    // Stays idle today because the pet is not on /ws. After it subscribes,
+    // requestState still rejects every state except dragging while DND is on.
     await expectAppearance(electronApp, idle, 800);
   });
 });

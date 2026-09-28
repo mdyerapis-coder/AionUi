@@ -1,9 +1,10 @@
 /**
  * Helpers for the desktop pet overlay specs.
  *
- * Agent events go through `__AIONUI_E2E_PET__.emitAgentEvent`, which calls
- * `bridge.emit` in the main process — the same adapter path that notifies the
- * pet. Specs must not call the state machine directly.
+ * Agent frames are published on the backend `/ws` the app is connected to
+ * (`POST /__e2e/ws-publish` on the dev proxy). Specs must not call the state
+ * machine, and must not emit through `bridge.adapter` — that pipe never
+ * carries these frames.
  */
 import { execFileSync } from 'node:child_process';
 import { expect, type ElectronApplication, type Page } from '@playwright/test';
@@ -27,6 +28,7 @@ export type PetWindowSnap = {
 export type PetSnapshot = {
   state: string | null;
   renderedState: string | null;
+  stateChangedAt: number | null;
   dnd: boolean;
   size: number;
   confirmBubbleEnabled: boolean;
@@ -40,7 +42,6 @@ export type PetSnapshot = {
 
 type PetE2EApi = {
   snapshot: () => Promise<PetSnapshot>;
-  emitAgentEvent: (name: string, data: unknown) => void;
   invokeContextItem: (which: string) => void;
   invokeTrayItem: (which: string) => Promise<void>;
   dragStart: () => Promise<void>;
@@ -99,29 +100,54 @@ export async function enablePet(page: Page, electronApp: ElectronApplication): P
   return waitForPetWindows(electronApp);
 }
 
-export async function emitAgentEvent(electronApp: ElectronApplication, name: string, data: unknown): Promise<void> {
-  await electronApp.evaluate(
-    (_electron, payload) => {
-      const api = globalThis.__AIONUI_E2E_PET__;
-      if (!api) throw new Error('Pet E2E API is not installed');
-      api.emitAgentEvent(payload.name, payload.data);
-    },
-    { name, data }
-  );
+async function backendHttpPort(electronApp: ElectronApplication): Promise<number> {
+  const port = await electronApp.evaluate(() => {
+    const value = globalThis['__backendPort'];
+    return typeof value === 'number' ? value : 0;
+  });
+  if (!Number.isInteger(port) || port <= 0) {
+    throw new Error('Backend port is not set on the main process');
+  }
+  return port;
 }
 
-export function streamMessage(type: string): {
-  type: string;
-  conversation_id: string;
-  msg_id: string;
-  data: Record<string, never>;
-} {
-  return {
-    type,
-    conversation_id: 'e2e-pet',
-    msg_id: `e2e-${type}`,
-    data: {},
-  };
+export type BackendWsFrame = {
+  name?: string;
+  event?: string;
+  data?: unknown;
+  payload?: unknown;
+};
+
+/**
+ * Inject one frame into the backend `/ws` stream the running app is connected to.
+ * The dev proxy broadcasts the body unchanged. A non-2xx response is a harness
+ * failure, not a pet bug.
+ */
+export async function publishWsFrame(electronApp: ElectronApplication, frame: BackendWsFrame): Promise<void> {
+  const port = await backendHttpPort(electronApp);
+  const response = await fetch(`http://127.0.0.1:${port}/__e2e/ws-publish`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(frame),
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`ws-publish failed: ${response.status} ${text}`);
+  }
+  const body = JSON.parse(text) as { ok?: boolean };
+  if (!body.ok) {
+    throw new Error(`ws-publish rejected the frame: ${text}`);
+  }
+}
+
+/** Close every backend `/ws` client so the app has to reconnect, as it would after a backend restart. */
+export async function dropBackendSockets(electronApp: ElectronApplication): Promise<void> {
+  const port = await backendHttpPort(electronApp);
+  const response = await fetch(`http://127.0.0.1:${port}/__e2e/ws-drop`, { method: 'POST' });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`ws-drop failed: ${response.status} ${text}`);
+  }
 }
 
 export async function readPetAppearance(

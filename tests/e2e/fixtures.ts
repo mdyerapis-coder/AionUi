@@ -255,9 +255,20 @@ async function launchApp(): Promise<ElectronApplication> {
   // Dev Electron's resourcesPath points at Electron itself, so the pinned
   // aioncore bundle under resources/bundled-aioncore is invisible unless we
   // pass it explicitly. Packaged builds resolve that bundle on their own.
+  //
+  // The pet specs publish agent frames on the backend `/ws` the app is
+  // connected to. aioncore does not rebroadcast client frames, so dev mode
+  // runs a local proxy as AIONUI_BACKEND_BIN and points that proxy at the
+  // real binary. Packaged mode is unchanged.
   if (!usePackaged && !commonEnv.AIONUI_BACKEND_BIN) {
     const bundled = bundledAioncoreBin(projectRoot);
-    if (bundled) commonEnv.AIONUI_BACKEND_BIN = bundled;
+    const proxy = path.join(projectRoot, 'tests', 'e2e', 'pet', 'backendWsProxy.mjs');
+    if (bundled && fs.existsSync(proxy)) {
+      commonEnv.AIONUI_E2E_AIONCORE_BIN = bundled;
+      commonEnv.AIONUI_BACKEND_BIN = proxy;
+    } else if (bundled) {
+      commonEnv.AIONUI_BACKEND_BIN = bundled;
+    }
   }
 
   if (usePackaged) {

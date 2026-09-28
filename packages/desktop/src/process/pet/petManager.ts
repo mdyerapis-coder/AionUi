@@ -6,7 +6,6 @@
 
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron';
-import { bridge } from '@/common/platform/bridge';
 import { ProcessConfig } from '@process/utils/initStorage';
 import i18n from '@process/services/i18n';
 import { PetStateMachine } from './petStateMachine';
@@ -717,6 +716,7 @@ type PetE2EWindowSnap = {
 type PetE2ESnapshot = {
   state: PetState | null;
   renderedState: string | null;
+  stateChangedAt: number | null;
   dnd: boolean;
   size: PetSize;
   confirmBubbleEnabled: boolean;
@@ -844,6 +844,7 @@ function installPetE2EApi(): void {
       return {
         state: stateMachine?.getCurrentState() ?? null,
         renderedState: await readRenderedState(),
+        stateChangedAt: stateMachine?.getChangedAt() ?? null,
         dnd: stateMachine?.getDnd() ?? false,
         size: currentSize,
         confirmBubbleEnabled,
@@ -858,16 +859,6 @@ function installPetE2EApi(): void {
         },
         windows,
       };
-    },
-
-    /**
-     * Deliver an agent event the same way the main-process adapter does:
-     * `bridge.emit` → pet notify hook → `PetEventBridge.handleBridgeMessage`.
-     * Channel names stay the real ones (`message.stream`, `message.userCreated`,
-     * `turn.completed`) so a channel-list fix makes these assertions pass.
-     */
-    emitAgentEvent(name: string, data: unknown): void {
-      bridge.emit(name, data);
     },
 
     invokeContextItem(which: PetContextAction): void {
