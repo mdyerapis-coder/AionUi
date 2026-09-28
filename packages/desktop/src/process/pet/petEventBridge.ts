@@ -116,6 +116,9 @@ export class PetEventBridge {
           this.handleTurnCompleted(readActivityContext(data));
         }
         return;
+      case REALTIME_CHANNELS.conversationListChanged:
+        this.onConversationListChanged(data);
+        return;
       default:
         return;
     }
@@ -139,13 +142,23 @@ export class PetEventBridge {
     this.apply('notification', context);
   }
 
+  /**
+   * A reconnect after the first successful `/ws` open.
+   * In-flight turns never get their terminal frame replayed, so drop every
+   * conversation back to idle instead of pinning the pet on `working`.
+   */
+  resetAfterReconnect(): void {
+    if (this.disposed) return;
+    this.clearAllSlots();
+    this.finishedTurns.clear();
+    this.activity = undefined;
+    this.publish();
+  }
+
   dispose(): void {
     this.disposed = true;
     this.sm.offStateChange(this.onMachineState);
-    for (const slot of this.slots.values()) {
-      if (slot.timer) clearTimeout(slot.timer);
-    }
-    this.slots.clear();
+    this.clearAllSlots();
   }
 
   private onUserCreated(data: unknown): void {
@@ -196,6 +209,39 @@ export class PetEventBridge {
     if (type === 'error' || isTipsError(data) || isAgentStatusError(data)) {
       this.apply('error', context);
     }
+  }
+
+  private onConversationListChanged(data: unknown): void {
+    if (!isRecord(data) || data.action !== 'deleted') return;
+    const conversationId = readString(data, ['conversation_id', 'conversationId', 'session_id', 'sessionId']);
+    if (!conversationId) return;
+    this.forgetConversation(conversationId);
+  }
+
+  /** The chat is gone. Drop its state and show whoever is still active. */
+  private forgetConversation(conversationId: string): void {
+    if (this.disposed) return;
+    const slot = this.slots.get(conversationId);
+    if (slot?.timer) clearTimeout(slot.timer);
+    const removed = this.slots.delete(conversationId);
+    this.clearTurnGuards(conversationId);
+    if (this.activity?.conversationId === conversationId) this.activity = undefined;
+    if (!removed) return;
+    this.publish();
+  }
+
+  private clearTurnGuards(conversationId: string): void {
+    const prefix = `${conversationId}\0`;
+    for (const key of this.finishedTurns) {
+      if (key.startsWith(prefix)) this.finishedTurns.delete(key);
+    }
+  }
+
+  private clearAllSlots(): void {
+    for (const slot of this.slots.values()) {
+      if (slot.timer) clearTimeout(slot.timer);
+    }
+    this.slots.clear();
   }
 
   private onTurnCompleted(data: unknown): void {

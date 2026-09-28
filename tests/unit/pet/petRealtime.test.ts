@@ -754,4 +754,106 @@ describe('pet realtime socket', () => {
       });
     });
   });
+
+  describe('reconnect and delete', () => {
+    it('leaves the pet idle when the socket drops mid-turn and reconnects', async () => {
+      await withFixture(async ({ sm, send, dropAndWaitForReconnect }) => {
+        await send(conversation.responseStream, stream('text', 'partial'));
+        await expectState(sm, 'working');
+
+        await dropAndWaitForReconnect();
+
+        await expectState(sm, 'idle');
+      });
+    });
+
+    it('clears a confirmation when the socket reconnects', async () => {
+      await withFixture(async ({ sm, send, dropAndWaitForReconnect }) => {
+        await send(
+          conversation.responseStream,
+          stream('text', 'partial', { conversation_id: 'conv-work', turn_id: 'turn-work' })
+        );
+        await send(
+          conversation.responseStream,
+          stream('ask', { questions: [] }, { conversation_id: 'conv-ask', turn_id: 'turn-ask' })
+        );
+        await expectState(sm, 'notification');
+
+        await dropAndWaitForReconnect();
+
+        await expectState(sm, 'idle');
+      });
+    });
+
+    it('does not clear activity on the first connect', async () => {
+      const sm = new PetStateMachine();
+      const bridge = new PetEventBridge(sm, { resetIdle() {} } as PetIdleTicker);
+      bridge.handleRealtimeEvent(channelOf(conversation.responseStream), stream('text', 'partial'));
+      expect(sm.getCurrentState()).toBe('working');
+
+      const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
+      openServers.push(server);
+      await new Promise<void>((resolve) => {
+        server.once('listening', () => resolve());
+      });
+      const { port } = server.address() as AddressInfo;
+      const opened = new Promise<void>((resolve) => {
+        server.once('connection', () => resolve());
+      });
+      const client = startPetRealtimeClient({
+        bridge,
+        url: `ws://127.0.0.1:${port}/ws`,
+      });
+      openClients.push(client);
+      try {
+        await opened;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(sm.getCurrentState()).toBe('working');
+      } finally {
+        client.close();
+        bridge.dispose();
+        sm.dispose();
+      }
+    });
+
+    it('falls back to the next conversation when a working one is deleted', async () => {
+      await withFixture(async ({ sm, send }) => {
+        await send(
+          conversation.responseStream,
+          stream('finish', null, { conversation_id: 'conv-done', turn_id: 'turn-done' })
+        );
+        await send(
+          conversation.responseStream,
+          stream('text', 'partial', { conversation_id: 'conv-work', turn_id: 'turn-work' })
+        );
+        await expectState(sm, 'working');
+
+        await send(conversation.listChanged, { conversation_id: 'conv-work', action: 'deleted' });
+
+        await expectState(sm, 'done');
+      });
+    });
+
+    it('returns to idle when the deleted conversation was the only one', async () => {
+      await withFixture(async ({ sm, send }) => {
+        await send(conversation.responseStream, stream('text', 'partial'));
+        await expectState(sm, 'working');
+
+        await send(conversation.listChanged, { conversation_id: 'conv-1', action: 'deleted' });
+
+        await expectState(sm, 'idle');
+      });
+    });
+
+    it('ignores a conversation list update that is not a deletion', async () => {
+      await withFixture(async ({ sm, send }) => {
+        await send(conversation.responseStream, stream('text', 'partial'));
+        await expectState(sm, 'working');
+
+        await send(conversation.listChanged, { conversation_id: 'conv-1', action: 'updated' });
+
+        expect(sm.getCurrentState()).toBe('working');
+      });
+    });
+  });
 });
