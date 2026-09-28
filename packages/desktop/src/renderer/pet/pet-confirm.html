@@ -22,6 +22,11 @@
         --bg-hover: #f3f4f6;
         --shortcut-bg: rgba(229, 230, 235, 0.6);
         --shortcut-text: #86909c;
+        /* Local copies of the app semantic tokens. This window does not load
+           the global color scheme; applyTheme can still override them. */
+        --primary: #165dff;
+        --danger: #f53f3f;
+        --text-white: #ffffff;
       }
 
       /* Dark theme */
@@ -35,6 +40,9 @@
         --bg-hover: #333333;
         --shortcut-bg: rgba(64, 64, 64, 0.6);
         --shortcut-text: #a6a6a6;
+        --primary: #4d9fff;
+        --danger: #f76560;
+        --text-white: #ffffff;
       }
 
       html,
@@ -130,6 +138,25 @@
       }
       .option-btn:active {
         transform: scale(0.98);
+      }
+      .option-btn.option-allow {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: var(--text-white);
+      }
+      .option-btn.option-deny {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: var(--text-white);
+      }
+      .option-btn.option-allow:hover,
+      .option-btn.option-deny:hover {
+        filter: brightness(1.08);
+      }
+      .option-btn.option-allow .shortcut,
+      .option-btn.option-deny .shortcut {
+        background: color-mix(in srgb, var(--text-white) 22%, transparent);
+        color: var(--text-white);
       }
       .shortcut {
         display: inline-flex;

@@ -5,181 +5,135 @@
  */
 
 import { applyTheme } from '@/renderer/utils/theme/applyTheme';
-
-interface IConfirmation<Option = any> {
-  title?: string;
-  id: string;
-  action?: string;
-  description: string;
-  call_id: string;
-  options: Array<{
-    label: string;
-    value: Option;
-    params?: Record<string, string>;
-  }>;
-  command_type?: string;
-  conversation_id: string;
-}
+import {
+  petPermissionButtonClass,
+  type PetPermissionConfirmView,
+  type PetPermissionTone,
+} from '@/common/chat/petPermission';
 
 const titleEl = document.getElementById('title')!;
 const descriptionEl = document.getElementById('description')!;
 const optionsEl = document.getElementById('options')!;
 
-let currentConfirmation: IConfirmation | null = null;
-let msgId = '';
+let current: PetPermissionConfirmView | null = null;
+let responding = false;
+
+function shortcutFor(
+  option: PetPermissionConfirmView['options'][number],
+  index: number,
+  options: PetPermissionConfirmView['options']
+): string {
+  if (index === 0) return 'Enter';
+  const firstDeny = options.findIndex((item) => item.tone === 'deny');
+  if (option.tone === 'deny' && index === firstDeny) return 'Esc';
+  return String(index + 1);
+}
+
+function optionByTone(tone: PetPermissionTone): PetPermissionConfirmView['options'][number] | undefined {
+  return current?.options.find((option) => option.tone === tone);
+}
 
 /**
- * Render confirmation UI.
+ * Render one button per permission option, coloured by that option's tone.
  */
-function renderConfirmation(confirmation: IConfirmation): void {
-  currentConfirmation = confirmation;
-  msgId = confirmation.id;
+function renderConfirmation(confirmation: PetPermissionConfirmView): void {
+  current = confirmation;
+  responding = false;
 
-  // Render title
-  if (confirmation.title) {
-    titleEl.textContent = confirmation.title;
-    titleEl.style.display = 'block';
+  titleEl.textContent = confirmation.title;
+  titleEl.style.display = confirmation.title ? 'block' : 'none';
+
+  if (confirmation.description) {
+    descriptionEl.textContent = confirmation.description;
+    descriptionEl.style.display = 'block';
   } else {
-    titleEl.style.display = 'none';
+    descriptionEl.textContent = '';
+    descriptionEl.style.display = 'none';
   }
 
-  // Render description
-  descriptionEl.textContent = confirmation.description;
-
-  // Render options — shortcut badge before label (matches the main confirmation message style)
   optionsEl.innerHTML = '';
   confirmation.options.forEach((option, index) => {
     const btn = document.createElement('div');
-    btn.className = 'option-btn';
-
-    // Determine shortcut hint using option.value (stable across locales)
-    let shortcut = '';
-    if (index === 0) {
-      shortcut = 'Enter';
-    } else if (option.value === 'cancel' || option.value === 'deny') {
-      shortcut = 'Esc';
-    } else if (option.value === 'proceed_always') {
-      shortcut = 'A';
-    } else if (option.value === 'proceed_once') {
-      shortcut = 'Y';
-    } else {
-      shortcut = String(index + 1);
-    }
+    btn.className = `option-btn ${petPermissionButtonClass(option.tone)}`;
+    btn.dataset.optionId = option.optionId;
+    btn.dataset.tone = option.tone;
 
     const shortcutSpan = document.createElement('span');
     shortcutSpan.className = 'shortcut';
-    shortcutSpan.textContent = shortcut;
+    shortcutSpan.textContent = shortcutFor(option, index, confirmation.options);
 
     const labelSpan = document.createElement('span');
     labelSpan.textContent = option.label;
 
     btn.appendChild(shortcutSpan);
     btn.appendChild(labelSpan);
-
     btn.addEventListener('click', () => {
-      respond(option.value);
+      respond(option.optionId);
     });
-
     optionsEl.appendChild(btn);
   });
 }
 
-/**
- * Send response to main process.
- */
-function respond(value: any): void {
-  if (!currentConfirmation) return;
-
-  window.petConfirmAPI.respond({
-    conversation_id: currentConfirmation.conversation_id,
-    msg_id: msgId,
-    call_id: currentConfirmation.call_id,
-    data: value,
-  });
-
-  currentConfirmation = null;
+function respond(optionId: string): void {
+  if (!current || responding) return;
+  responding = true;
+  window.petConfirmAPI.respond({ id: current.id, optionId });
 }
 
-/**
- * Handle keyboard shortcuts.
- */
-document.addEventListener('keydown', (e: KeyboardEvent) => {
-  if (!currentConfirmation) return;
+function setResponding(next: boolean): void {
+  responding = next;
+}
 
-  // Enter: first option
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    if (currentConfirmation.options.length > 0) {
-      respond(currentConfirmation.options[0].value);
-    }
+document.addEventListener('keydown', (event: KeyboardEvent) => {
+  if (!current || responding) return;
+
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    const first = current.options[0];
+    if (first) respond(first.optionId);
     return;
   }
 
-  // Escape: find cancel option
-  if (e.key === 'Escape') {
-    e.preventDefault();
-    const cancelOption = currentConfirmation.options.find((opt) => opt.value === 'cancel' || opt.value === 'deny');
-    if (cancelOption) {
-      respond(cancelOption.value);
-    }
+  if (event.key === 'Escape' || event.key === 'n' || event.key === 'N') {
+    event.preventDefault();
+    const deny = optionByTone('deny');
+    if (deny) respond(deny.optionId);
     return;
   }
 
-  // A: always allow
-  if (e.key === 'a' || e.key === 'A') {
-    e.preventDefault();
-    const alwaysOption = currentConfirmation.options.find((opt) => opt.value === 'proceed_always');
-    if (alwaysOption) {
-      respond(alwaysOption.value);
-    }
-    return;
-  }
-
-  // Y: allow once
-  if (e.key === 'y' || e.key === 'Y') {
-    e.preventDefault();
-    const yesOption = currentConfirmation.options.find((opt) => opt.value === 'proceed_once');
-    if (yesOption) {
-      respond(yesOption.value);
-    }
-    return;
-  }
-
-  // N: no/deny
-  if (e.key === 'n' || e.key === 'N') {
-    e.preventDefault();
-    const noOption = currentConfirmation.options.find((opt) => opt.value === 'cancel' || opt.value === 'deny');
-    if (noOption) {
-      respond(noOption.value);
-    }
-    return;
+  if (event.key === 'y' || event.key === 'Y') {
+    event.preventDefault();
+    const allow = optionByTone('allow');
+    if (allow) respond(allow.optionId);
   }
 });
 
-// Listen for theme changes from main process
 window.petConfirmAPI.onThemeChange((theme) => applyTheme(theme));
 
-// Listen for confirmation events
-window.petConfirmAPI.onConfirmationAdd((data: IConfirmation) => {
+window.petConfirmAPI.onConfirmationAdd((data: PetPermissionConfirmView) => {
   renderConfirmation(data);
 });
 
-window.petConfirmAPI.onConfirmationUpdate((data: IConfirmation) => {
+window.petConfirmAPI.onConfirmationUpdate((data: PetPermissionConfirmView) => {
   renderConfirmation(data);
 });
 
-window.petConfirmAPI.onConfirmationRemove((data: { conversation_id: string; id: string }) => {
-  if (currentConfirmation && currentConfirmation.id === data.id) {
-    currentConfirmation = null;
+window.petConfirmAPI.onConfirmationRemove((data: { id: string }) => {
+  if (current && current.id === data.id) {
+    current = null;
+    responding = false;
   }
 });
 
-// Drag support via the grip handle
+window.petConfirmAPI.onConfirmError((data: { id: string }) => {
+  if (current && current.id === data.id) setResponding(false);
+});
+
 const dragHandle = document.getElementById('drag-handle')!;
 let confirmDragging = false;
 
-dragHandle.addEventListener('mousedown', (e: MouseEvent) => {
-  if (e.button !== 0) return;
+dragHandle.addEventListener('mousedown', (event: MouseEvent) => {
+  if (event.button !== 0) return;
   confirmDragging = true;
   window.petConfirmAPI.dragStart();
 });

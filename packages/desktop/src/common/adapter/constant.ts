@@ -16,6 +16,7 @@ export const REALTIME_CHANNELS = {
   userCreated: 'message.userCreated',
   turnCompleted: 'turn.completed',
   confirmationAdd: 'confirmation.add',
+  confirmationRemove: 'confirmation.remove',
   teamChildTurnStarted: 'team.childTurnStarted',
   teamChildTurnCompleted: 'team.childTurnCompleted',
   teamRunStarted: 'team.runStarted',
