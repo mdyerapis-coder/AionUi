@@ -4,10 +4,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import fs from 'node:fs';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
-import type { IConfirmation } from '@/common/chat/chatLib';
 import { ipcBridge } from '@/common';
+import {
+  answerPetPermission,
+  type PetPermissionBubble,
+  type PetPermissionConfirmView,
+} from '@/common/chat/petPermission';
 import i18n from '@process/services/i18n';
 import { getCachedTheme, onThemeChanged } from '@process/bridge/themeBridge';
 
@@ -17,9 +22,11 @@ const PRELOAD_DIR = path.join(__dirname, '..', '..', 'preload');
 const RENDERER_DIR = path.join(__dirname, '..', '..', 'renderer', 'pet');
 
 let confirmWindow: BrowserWindow | null = null;
-let currentConfirmations = new Map<string, IConfirmation<any> & { conversation_id: string }>();
+let bubbles = new Map<string, PetPermissionBubble>();
+let visibleId: string | null = null;
+let accepting = false;
 let anchorBounds: { x: number; y: number; width: number; height: number } | null = null;
-let pendingConfirmations: Array<IConfirmation<any> & { conversation_id: string }> = [];
+let pendingViews: PetPermissionConfirmView[] = [];
 let windowReady = false;
 // User-overridden confirm window position (set when user drags the window).
 // Persists for the current app session only; cleared on destroy.
@@ -32,6 +39,7 @@ let userPosition: { x: number; y: number } | null = null;
  */
 export function initPetConfirmManager(bounds: { x: number; y: number; width: number; height: number }): void {
   anchorBounds = bounds;
+  accepting = true;
   unregisterIpcHandlers();
   registerIpcHandlers();
 }
@@ -50,9 +58,11 @@ export function updateAnchorBounds(bounds: { x: number; y: number; width: number
  * Destroy confirm manager and clean up resources.
  */
 export function destroyPetConfirmManager(): void {
+  accepting = false;
   unregisterIpcHandlers();
   destroyConfirmWindow();
-  currentConfirmations.clear();
+  bubbles.clear();
+  visibleId = null;
   anchorBounds = null;
   userPosition = null;
 }
@@ -63,26 +73,98 @@ export function destroyPetConfirmManager(): void {
  * "pet confirm bubble" toggle is turned off at runtime.
  */
 export function unhookPetConfirm(): void {
-  /* confirm hook was removed with process/task/; confirmations now route via
-   * WS from backend straight to renderer. This function is retained as a
-   * no-op so callers (petManager confirmBubbleEnabled toggle) stay compile-safe. */
+  // Leave any bubble already on screen. Later acp_permission frames are ignored.
+  accepting = false;
 }
 
 /**
- * Translate confirmation option labels using main-process i18n.
+ * Show a permission bubble parsed from `acp_permission` or `permission`.
+ * Ignored while the pet confirm setting is off.
  */
-function translateConfirmation<T>(
-  confirmation: IConfirmation<T> & { conversation_id: string }
-): IConfirmation<T> & { conversation_id: string } {
+export function showPetPermission(bubble: PetPermissionBubble): void {
+  if (!accepting) return;
+  bubbles.set(bubble.id, bubble);
+  displayBubble(bubble);
+}
+
+/** Close bubbles that were answered elsewhere or whose turn ended. */
+export function dismissPetPermissions(ids: string[]): void {
+  let visibleClosed = false;
+  for (const id of ids) {
+    if (!bubbles.delete(id)) continue;
+    if (id === visibleId) visibleClosed = true;
+  }
+  pendingViews = pendingViews.filter((view) => bubbles.has(view.id));
+  if (!visibleClosed) return;
+
+  const closedId = visibleId;
+  const next = [...bubbles.values()].at(-1);
+  if (next) {
+    displayBubble(next);
+    return;
+  }
+  visibleId = null;
+  if (confirmWindow && !confirmWindow.isDestroyed() && closedId) {
+    confirmWindow.webContents.send('pet:confirm-remove', { id: closedId });
+  }
+  destroyConfirmWindow();
+}
+
+function translateText(text: string, params?: Record<string, string>): string {
+  return i18n.t(text, { ...params, defaultValue: text });
+}
+
+/** Translate title, description, and option labels before they reach the window. */
+function toConfirmView(bubble: PetPermissionBubble): PetPermissionConfirmView {
+  const title = translateText(bubble.title);
+  const description = bubble.description ? translateText(bubble.description) : '';
   return {
-    ...confirmation,
-    title: confirmation.title ? i18n.t(confirmation.title, { defaultValue: confirmation.title }) : confirmation.title,
-    description: i18n.t(confirmation.description, { defaultValue: confirmation.description }),
-    options: confirmation.options.map((opt) => ({
-      ...opt,
-      label: i18n.t(opt.label, { ...opt.params, defaultValue: opt.label }),
+    id: bubble.id,
+    title,
+    description: description === title ? '' : description,
+    options: bubble.options.map((option) => ({
+      optionId: option.optionId,
+      label: translateText(option.label, option.params),
+      tone: option.tone,
     })),
   };
+}
+
+function displayBubble(bubble: PetPermissionBubble): void {
+  visibleId = bubble.id;
+  const view = toConfirmView(bubble);
+  if (!confirmWindow || confirmWindow.isDestroyed()) {
+    createConfirmWindow();
+  }
+  if (!confirmWindow || confirmWindow.isDestroyed()) return;
+  if (windowReady) {
+    confirmWindow.webContents.send('pet:confirm-add', view);
+    captureConfirmPage();
+  } else {
+    pendingViews.push(view);
+  }
+}
+
+/** Write a page capture when the live check asks for one. A screen grab of this
+ * transparent window is a black square under Xvfb. */
+function captureConfirmPage(): void {
+  const dir = process.env.AIONUI_PET_CONFIRM_CAPTURE_DIR;
+  if (!dir || !confirmWindow || confirmWindow.isDestroyed()) return;
+  const target = confirmWindow;
+  setTimeout(() => {
+    if (target.isDestroyed()) return;
+    void target.webContents
+      .capturePage()
+      .then((image) => {
+        fs.mkdirSync(dir, { recursive: true });
+        const file = path.join(dir, `pet-confirm-${Date.now()}.png`);
+        fs.writeFileSync(file, image.toPNG());
+        console.log('[PetConfirm] captured', file);
+      })
+      .catch((error: unknown) => {
+        console.error('[PetConfirm] capturePage failed:', error);
+      });
+  }, 500);
 }
 
 /**
@@ -184,12 +266,13 @@ function createConfirmWindow(): void {
     }
 
     // Flush any confirmations queued before the page finished loading
-    for (const c of pendingConfirmations) {
+    for (const view of pendingViews) {
       if (confirmWindow && !confirmWindow.isDestroyed()) {
-        confirmWindow.webContents.send('pet:confirm-add', c);
+        confirmWindow.webContents.send('pet:confirm-add', view);
       }
     }
-    pendingConfirmations = [];
+    pendingViews = [];
+    captureConfirmPage();
   });
 
   confirmWindow.on('closed', () => {
@@ -210,7 +293,7 @@ function destroyConfirmWindow(): void {
   }
   confirmWindow = null;
   windowReady = false;
-  pendingConfirmations = [];
+  pendingViews = [];
   console.log('[PetConfirm] Confirm window destroyed');
 }
 
@@ -230,54 +313,6 @@ function loadContent(): void {
     confirmWindow.loadFile(path.join(RENDERER_DIR, 'pet-confirm.html')).catch((error) => {
       console.error('[PetConfirm] loadFile failed:', error);
     });
-  }
-}
-
-/**
- * Show confirmation in window.
- */
-function showConfirmation(confirmation: IConfirmation<any> & { conversation_id: string }): void {
-  currentConfirmations.set(confirmation.id, confirmation);
-  const translated = translateConfirmation(confirmation);
-
-  if (!confirmWindow || confirmWindow.isDestroyed()) {
-    createConfirmWindow();
-  }
-
-  if (confirmWindow && !confirmWindow.isDestroyed()) {
-    if (windowReady) {
-      confirmWindow.webContents.send('pet:confirm-add', translated);
-    } else {
-      // Queue until did-finish-load
-      pendingConfirmations.push(translated);
-    }
-  }
-}
-
-/**
- * Update confirmation in window.
- */
-function updateConfirmation(confirmation: IConfirmation<any> & { conversation_id: string }): void {
-  currentConfirmations.set(confirmation.id, confirmation);
-
-  if (confirmWindow && !confirmWindow.isDestroyed()) {
-    confirmWindow.webContents.send('pet:confirm-update', translateConfirmation(confirmation));
-  }
-}
-
-/**
- * Remove confirmation from window.
- */
-function removeConfirmation(data: { conversation_id: string; id: string }): void {
-  currentConfirmations.delete(data.id);
-
-  if (confirmWindow && !confirmWindow.isDestroyed()) {
-    confirmWindow.webContents.send('pet:confirm-remove', data);
-  }
-
-  // Destroy window if no confirmations left
-  if (currentConfirmations.size === 0) {
-    destroyConfirmWindow();
   }
 }
 
@@ -325,48 +360,40 @@ function registerIpcHandlers(): void {
     }
   });
 
-  ipcMain.on(
-    'pet:confirm-respond',
-    (_event, data: { conversation_id: string; msg_id: string; call_id: string; data: any }) => {
-      console.log('[PetConfirm] Received response:', JSON.stringify(data));
+  ipcMain.on('pet:confirm-respond', (_event, data: { id?: string; optionId?: string }) => {
+    const id = typeof data?.id === 'string' ? data.id : '';
+    const optionId = typeof data?.optionId === 'string' ? data.optionId : '';
+    const bubble = bubbles.get(id);
+    if (!bubble || !optionId) return;
 
-      // Remove from local tracking
-      const confirmation = Array.from(currentConfirmations.values()).find(
-        (c) => c.call_id === data.call_id && c.conversation_id === data.conversation_id
-      );
-
-      if (confirmation) {
-        currentConfirmations.delete(confirmation.id);
-
-        // Announce removal on the WS channel so any renderer confirmation UI
-        // can drop the entry. NOTE: with the HTTP/WS adapter, emit() is a
-        // no-op in the main process (see httpBridge.ts wsEmitter); the
-        // authoritative remove event is broadcast by the backend itself when
-        // /confirmations/{call_id}/confirm is accepted.
-        ipcBridge.conversation.confirmation.remove.emit({
-          conversation_id: data.conversation_id,
-          id: confirmation.id,
-        });
-      }
-
-      // Forward response to backend via HTTP (aionui-conversation route)
-      ipcBridge.conversation.confirmation.confirm
-        .invoke({
-          conversation_id: data.conversation_id,
-          msg_id: data.msg_id,
-          call_id: data.call_id,
-          data: data.data,
-        })
-        .catch((error: unknown) => {
-          console.error('[PetConfirm] confirmation.confirm.invoke failed:', error);
-        });
-
-      // Close window if no confirmations left
-      if (currentConfirmations.size === 0) {
-        destroyConfirmWindow();
-      }
-    }
-  );
+    void answerPetPermission(bubble, optionId, {
+      confirmRequest: (answer) =>
+        ipcBridge.conversation.confirmMessage.invoke({
+          confirm_key: answer.confirm_key,
+          msg_id: answer.msg_id,
+          conversation_id: answer.conversation_id,
+          call_id: answer.call_id,
+        }),
+      confirmConfirmation: (answer) =>
+        ipcBridge.conversation.confirmation.confirm.invoke({
+          conversation_id: answer.conversation_id,
+          msg_id: answer.msg_id,
+          call_id: answer.call_id,
+          data: answer.data,
+          always_allow: answer.always_allow,
+        }),
+    })
+      .then((sent) => {
+        if (!sent) return;
+        dismissPetPermissions([bubble.id]);
+      })
+      .catch((error: unknown) => {
+        console.error('[PetConfirm] permission answer failed:', error);
+        if (confirmWindow && !confirmWindow.isDestroyed()) {
+          confirmWindow.webContents.send('pet:confirm-error', { id: bubble.id });
+        }
+      });
+  });
 }
 
 /**

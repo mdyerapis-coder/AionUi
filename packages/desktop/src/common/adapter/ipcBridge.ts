@@ -412,7 +412,7 @@ export const conversation = {
     list: httpGet<IConfirmation<unknown>[], { conversation_id: string }>(
       (p) => `/api/conversations/${p.conversation_id}/confirmations`
     ),
-    remove: wsEmitter<{ conversation_id: string; id: string }>('confirmation.remove'),
+    remove: wsEmitter<{ conversation_id: string; id: string }>(REALTIME_CHANNELS.confirmationRemove),
   },
   approval: {
     check: httpGet<{ approved: boolean }, { conversation_id: string; action: string; command_type?: string }>(
