@@ -9,7 +9,7 @@ import {
   isPetPoint,
   normalizePetSize,
   resolvePetPosition,
-  shouldPersistPetPosition,
+  petPositionReadToSave,
   type PetDisplay,
 } from '@process/pet/petPlacement';
 
@@ -105,12 +105,23 @@ describe('pet preference guards', () => {
     expect(isPetPoint(null)).toBe(false);
   });
 
-  it('persists a position read that matches the requested coordinates', () => {
-    expect(shouldPersistPetPosition({ x: 400, y: 300 }, { x: 401, y: 300 })).toBe(true);
+  it('stores the read-back when the window reports the requested move', () => {
+    expect(petPositionReadToSave({ x: 10, y: 20 }, { x: 400, y: 300 }, { x: 401, y: 300 })).toEqual({
+      x: 401,
+      y: 300,
+    });
   });
 
-  it('does not persist a read that ignored the requested move', () => {
-    expect(shouldPersistPetPosition({ x: 400, y: 300 }, { x: 0, y: 0 })).toBe(false);
-    expect(shouldPersistPetPosition({ x: 400, y: 300 }, null)).toBe(false);
+  it('stores the landing point when the window moved somewhere else', () => {
+    expect(petPositionReadToSave({ x: 10, y: 20 }, { x: 400, y: 300 }, { x: 360, y: 280 })).toEqual({
+      x: 360,
+      y: 280,
+    });
+  });
+
+  it('does not store a point when the move was ignored or the read failed', () => {
+    expect(petPositionReadToSave({ x: 10, y: 20 }, { x: 400, y: 300 }, { x: 10, y: 20 })).toBeNull();
+    expect(petPositionReadToSave({ x: 10, y: 20 }, { x: 400, y: 300 }, null)).toBeNull();
+    expect(petPositionReadToSave(null, { x: 400, y: 300 }, { x: 0, y: 0 })).toBeNull();
   });
 });

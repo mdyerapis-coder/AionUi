@@ -42,6 +42,8 @@ const testEnv = vi.hoisted(() => {
     cursor: { x: 0, y: 0 },
     displays: [] as PetDisplay[],
     positionNoop: false,
+    positionIgnored: false,
+    landOffset: null as { x: number; y: number } | null,
     positionThrows: false,
     configSet: vi.fn(async (_key: string, _value: unknown) => undefined),
   };
@@ -87,15 +89,20 @@ vi.mock('electron', () => {
 
     setPosition(x: number, y: number): void {
       if (testEnv.positionThrows) throw new Error('setPosition failed');
-      if (testEnv.positionNoop) return;
-      this.x = x;
-      this.y = y;
+      if (testEnv.positionNoop || testEnv.positionIgnored) return;
+      this.x = x + (testEnv.landOffset?.x ?? 0);
+      this.y = y + (testEnv.landOffset?.y ?? 0);
     }
 
     getPosition(): [number, number] {
       if (testEnv.positionThrows) throw new Error('getPosition failed');
       if (testEnv.positionNoop) return [0, 0];
       return [this.x, this.y];
+    }
+
+    getBounds(): { x: number; y: number; width: number; height: number } {
+      const [x, y] = this.getPosition();
+      return { x, y, width: this.width, height: this.height };
     }
 
     getSize(): [number, number] {
@@ -305,6 +312,8 @@ describe('pet preference persistence', () => {
     testEnv.cursor.y = 0;
     testEnv.displays.splice(0, testEnv.displays.length, primaryDisplay);
     testEnv.positionNoop = false;
+    testEnv.positionIgnored = false;
+    testEnv.landOffset = null;
     testEnv.positionThrows = false;
     testEnv.configSet.mockClear();
 
@@ -485,6 +494,38 @@ describe('pet preference persistence', () => {
     await flush();
 
     expect(testEnv.store.get('pet.position')).toEqual({ x: 40, y: 50 });
+  });
+
+  it('does not save a position when setPosition is ignored and the window stays put', async () => {
+    testEnv.store.set('pet.position', { x: 40, y: 50 });
+    await pet.openPetFromSavedPreferences();
+    testEnv.positionIgnored = true;
+    const win = latestPet();
+    testEnv.cursor = { x: win.x + 10, y: win.y + 10 };
+    testEnv.ipcHandlers.get('pet:drag-start')?.();
+    testEnv.cursor = { x: win.x + 200, y: win.y + 200 };
+    await vi.advanceTimersByTimeAsync(20);
+    testEnv.ipcHandlers.get('pet:drag-end')?.();
+    await flush();
+
+    expect(testEnv.store.get('pet.position')).toEqual({ x: 40, y: 50 });
+    expect({ x: win.x, y: win.y }).toEqual({ x: 40, y: 50 });
+  });
+
+  it('saves the point the window landed on when that differs from the request', async () => {
+    await pet.openPetFromSavedPreferences();
+    testEnv.landOffset = { x: -15, y: 22 };
+    const win = latestPet();
+    const startX = win.x;
+    const startY = win.y;
+    testEnv.cursor = { x: startX + 10, y: startY + 12 };
+    testEnv.ipcHandlers.get('pet:drag-start')?.();
+    testEnv.cursor = { x: startX + 10 + 45, y: startY + 12 + 30 };
+    await vi.advanceTimersByTimeAsync(20);
+    testEnv.ipcHandlers.get('pet:drag-end')?.();
+    await flush();
+
+    expect(testEnv.store.get('pet.position')).toEqual({ x: startX + 45 - 15, y: startY + 30 + 22 });
   });
 
   it('does not throw when position calls fail during a drag or reset', async () => {

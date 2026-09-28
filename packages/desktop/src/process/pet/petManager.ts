@@ -22,8 +22,9 @@ import {
 import {
   isPetPoint,
   normalizePetSize,
+  petPointsWithin,
+  petPositionReadToSave,
   resolvePetPosition,
-  shouldPersistPetPosition,
   type PetPoint,
 } from './petPlacement';
 import type { PetSize, PetState } from './petTypes';
@@ -58,6 +59,8 @@ let currentDnd = false;
 let savedPosition: PetPoint | null = null;
 /** Last coordinates setPosition was asked to apply during the current drag. */
 let lastRequestedPosition: PetPoint | null = null;
+/** Window position read when the current drag started. Used to detect an ignored move. */
+let positionBeforeMove: PetPoint | null = null;
 let dragTimer: ReturnType<typeof setInterval> | null = null;
 let dragWatchdog: ReturnType<typeof setTimeout> | null = null;
 let dragOffsetX = 0;
@@ -260,6 +263,8 @@ export function destroyPetWindow(): void {
     petWindow.destroy();
   }
   petWindow = null;
+  lastRequestedPosition = null;
+  positionBeforeMove = null;
 
   console.log('[Pet] Pet windows destroyed');
 }
@@ -474,6 +479,7 @@ function registerIpcHandlers(): void {
     // Position APIs can throw or no-op on native Wayland. Skip the drag rather
     // than computing an offset from garbage coordinates.
     if (!windowPos) return;
+    positionBeforeMove = windowPos;
     dragOffsetX = cursor.x - windowPos.x;
     dragOffsetY = cursor.y - windowPos.y;
 
@@ -673,7 +679,9 @@ function endDrag(): void {
   const restoreTo: PetState = preDragState ?? 'idle';
   preDragState = null;
   const requested = lastRequestedPosition;
+  const before = positionBeforeMove;
   lastRequestedPosition = null;
+  positionBeforeMove = null;
   stateMachine?.forceState(restoreTo);
   idleTicker?.resetIdle();
   if (petWindow && !petWindow.isDestroyed()) {
@@ -681,7 +689,7 @@ function endDrag(): void {
     if (actual) {
       updateAnchorBounds({ x: actual.x, y: actual.y, width: currentSize, height: currentSize });
     }
-    persistPositionIfReliable(requested, actual);
+    persistPositionIfReliable(before, requested, actual);
   }
 }
 
@@ -805,31 +813,54 @@ function resetPosition(): void {
   // Reset puts the pet back where createPetWindow would have put it for a
   // fresh launch — the bottom-right of the display that currently hosts the
   // main AionUi window.
+  const before = readPetPosition();
   const target = computeInitialPosition(currentSize);
   const moved = safeSetPosition(petWindow, target.x, target.y);
 
   const hitOffset = Math.round(currentSize * 0.2);
   safeSetPosition(petHitWindow, target.x + hitOffset, target.y + hitOffset);
 
-  idleTicker?.setPetBounds(target.x, target.y, currentSize, currentSize);
-
-  // Update confirm window anchor
-  updateAnchorBounds({ x: target.x, y: target.y, width: currentSize, height: currentSize });
+  const actual = readPetPosition();
+  const landed = actual ?? before;
+  if (landed) {
+    idleTicker?.setPetBounds(landed.x, landed.y, currentSize, currentSize);
+    updateAnchorBounds({ x: landed.x, y: landed.y, width: currentSize, height: currentSize });
+  }
   if (moved) {
-    persistPositionIfReliable(target, readPetPosition());
+    persistPositionIfReliable(before, target, actual);
   }
 }
 
 function readPetPosition(): PetPoint | null {
   if (!petWindow || petWindow.isDestroyed()) return null;
+  return readWindowPoint(petWindow);
+}
+
+/**
+ * Read the window's real origin. `getBounds` and `getPosition` must agree;
+ * a disagreement is not a position we can store. Either call may throw or
+ * no-op on native Wayland, and a failure of one falls through to the other.
+ */
+function readWindowPoint(win: BrowserWindow): PetPoint | null {
+  let fromBounds: PetPoint | null = null;
+  let fromPosition: PetPoint | null = null;
   try {
-    const [x, y] = petWindow.getPosition();
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-    return { x, y };
+    const bounds = win.getBounds();
+    if (isPetPoint(bounds)) fromBounds = { x: bounds.x, y: bounds.y };
+  } catch (error) {
+    console.warn('[Pet] getBounds failed:', error);
+  }
+  try {
+    const [x, y] = win.getPosition();
+    if (Number.isFinite(x) && Number.isFinite(y)) fromPosition = { x, y };
   } catch (error) {
     console.warn('[Pet] getPosition failed:', error);
-    return null;
   }
+  if (fromBounds && fromPosition) {
+    if (!petPointsWithin(fromBounds, fromPosition)) return null;
+    return fromBounds;
+  }
+  return fromBounds ?? fromPosition;
 }
 
 function safeSetPosition(win: BrowserWindow, x: number, y: number): boolean {
@@ -842,9 +873,9 @@ function safeSetPosition(win: BrowserWindow, x: number, y: number): boolean {
   }
 }
 
-function persistPositionIfReliable(requested: PetPoint | null, actual: PetPoint | null): void {
-  if (!actual || !shouldPersistPetPosition(requested, actual)) return;
-  const point = { x: actual.x, y: actual.y };
+function persistPositionIfReliable(before: PetPoint | null, requested: PetPoint | null, actual: PetPoint | null): void {
+  const point = petPositionReadToSave(before, requested, actual);
+  if (!point) return;
   const previous = savedPosition;
   savedPosition = point;
   void ProcessConfig.set('pet.position', point).catch((error) => {
