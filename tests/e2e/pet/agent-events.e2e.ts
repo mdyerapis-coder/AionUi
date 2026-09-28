@@ -21,6 +21,13 @@
  * needs-confirmation. Upstream v2.2.2 no longer sends `confirmation.add`, so
  * nothing new depends on that channel.
  *
+ * A dropped `/ws` in the middle of a turn loses the terminal frame. After
+ * reconnect the pet must leave `working` for idle within a few seconds.
+ * Deleting that conversation (`conversation.listChanged`, `action: 'deleted'`)
+ * must drop its state and show the other live conversation, or idle when it
+ * was the only one. Both are `test.fail()` until the pet is on `/ws` and
+ * those resets exist.
+ *
  * Nothing here calls the state machine or `bridge.emit`.
  */
 import { test, expect, type ElectronApplication } from '../fixtures';
@@ -536,6 +543,46 @@ test.describe('pet agent reactions', () => {
       stream('text', { turnId: 'turn-after', data: { content: 'after the restart' } })
     );
     await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+  });
+
+  test('a dropped socket mid-turn does not leave the pet stuck working', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('text', { turnId: 'turn-drop', data: { content: 'partial reply' } })
+    );
+    // pet does not subscribe to backend /ws yet. After it does, the finish
+    // frame is not sent: the drop ate it. Reconnect must leave working for
+    // idle within this wait, not stay stuck.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+    await dropBackendSockets(electronApp);
+    await expectAppearance(electronApp, idle, 5_000);
+  });
+
+  test('deleting a working conversation shows the other live conversation', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('finish', { conversationId: 'conv-done', turnId: 'turn-done' })
+    );
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('text', { conversationId: 'conv-work', turnId: 'turn-work', data: { content: 'partial reply' } })
+    );
+    // pet does not subscribe to backend /ws yet. After it does, deleting
+    // conv-work must clear that conversation and show conv-done. With only
+    // one conversation, the same delete returns to idle.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+    await publish(electronApp, 'conversation.listChanged', {
+      conversation_id: 'conv-work',
+      action: 'deleted',
+    });
+    await expectAppearance(electronApp, { state: 'done', rendered: 'done' });
   });
 
   test('a failed acp tool call stays working and is not an error', async ({ page, electronApp }) => {
