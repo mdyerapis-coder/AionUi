@@ -78,12 +78,18 @@ function sendJson(res, status, body) {
 const upstreamPort = await reservePort();
 const childArgs = argv.slice();
 childArgs[portFlag + 1] = String(upstreamPort);
+// aioncore shuts down unless --parent-pid is the process that spawned it.
+// Electron's pid is our parent; the child has to watch us instead.
+const parentFlag = childArgs.indexOf('--parent-pid');
+const electronParentPid = parentFlag >= 0 ? Number(childArgs[parentFlag + 1]) : 0;
+if (parentFlag >= 0) childArgs[parentFlag + 1] = String(process.pid);
 
 const clients = new Set();
 let announced = false;
 let childReady = false;
 let proxyListening = false;
 let shuttingDown = false;
+let readyTimeout;
 
 const child = spawn(bin, childArgs, {
   stdio: ['ignore', 'pipe', 'pipe'],
@@ -129,6 +135,7 @@ child.on('exit', (code, signal) => {
 function announce() {
   if (announced || !proxyListening || !childReady) return;
   announced = true;
+  clearTimeout(readyTimeout);
   process.stdout.write(`${LISTENING_PREFIX}${JSON.stringify({ host: '127.0.0.1', port: publicPort })}\n`);
   process.stdout.write(`${READY_MARKER}\n`);
 }
@@ -141,6 +148,7 @@ function forwardChildStdout(chunk) {
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith(LISTENING_PREFIX)) continue;
+    if (trimmed.includes('Server listening on 127.0.0.1:')) continue;
     if (trimmed === READY_MARKER) {
       childReady = true;
       announce();
@@ -296,6 +304,12 @@ server.on('upgrade', (req, socket, head) => {
   proxyUpgrade(req, socket, head);
 });
 
+readyTimeout = setTimeout(() => {
+  console.error('backendWsProxy: upstream aioncore did not become ready');
+  shutdown(1);
+}, 55_000);
+readyTimeout.unref();
+
 await new Promise((resolve, reject) => {
   server.once('error', reject);
   server.listen(publicPort, '127.0.0.1', () => {
@@ -304,9 +318,15 @@ await new Promise((resolve, reject) => {
   });
 });
 
-const readyTimeout = setTimeout(() => {
-  console.error('backendWsProxy: upstream aioncore did not become ready');
-  shutdown(1);
-}, 55_000);
-readyTimeout.unref();
+if (electronParentPid > 0) {
+  const parentWatch = setInterval(() => {
+    try {
+      process.kill(electronParentPid, 0);
+    } catch {
+      shutdown(0);
+    }
+  }, 1000);
+  parentWatch.unref();
+}
+
 announce();
