@@ -14,6 +14,11 @@ export class PetStateMachine {
     return this.current;
   }
 
+  /** Epoch ms of the last applied state. Repeating the current state does not move it. */
+  getChangedAt(): number {
+    return this.changedAt;
+  }
+
   setDnd(enabled: boolean): void {
     this.dnd = enabled;
     if (enabled) {
