@@ -8,6 +8,12 @@
  * leave idle is `test.fail()`. Assertions that correctly stay idle are real
  * passes: marking them failing would go red for the wrong reason.
  *
+ * A follow-up will teach the pet a failed tool stays working, a cancelled
+ * team turn returns to idle, a cron error, a disconnect during a running
+ * turn, and a stop after `cancelling`. Those are `test.fail()` too. Staying
+ * idle for cron `skipped` / `missed`, a disconnect while idle, and team
+ * mailbox or task changes is already correct, so those stay real passes.
+ *
  * Nothing here calls the state machine or `bridge.emit`.
  */
 import { test, expect, type ElectronApplication } from '../fixtures';
@@ -44,6 +50,27 @@ async function expectAppearance(
   timeout = 2_000
 ): Promise<void> {
   await expect.poll(async () => readPetAppearance(electronApp), { timeout }).toEqual(appearance);
+}
+
+/** Idle, and the pet never showed done or error on the way there. */
+async function expectSettledIdle(electronApp: ElectronApplication, timeout = 2_000): Promise<void> {
+  let sawDone = false;
+  let sawError = false;
+  await expect
+    .poll(
+      async () => {
+        const appearance = await readPetAppearance(electronApp);
+        if (appearance.state === 'done' || appearance.rendered === 'done') sawDone = true;
+        if (appearance.state === 'error' || appearance.rendered === 'error') sawError = true;
+        return {
+          sawIdle: appearance.state === 'idle' && appearance.rendered === 'idle',
+          sawDone,
+          sawError,
+        };
+      },
+      { timeout }
+    )
+    .toEqual({ sawIdle: true, sawDone: false, sawError: false });
 }
 
 type Envelope = 'name' | 'event';
@@ -134,6 +161,35 @@ const confirmation = {
   description: 'Allow this command?',
   options: [{ label: 'Allow', value: 'allow' }],
 };
+
+function teamRun(status: 'running' | 'cancelled'): Record<string, unknown> {
+  return {
+    team_id: 'team-1',
+    team_run_id: 'run-1',
+    source: 'user_message',
+    has_user_intervention: false,
+    target_slot_id: 'slot-1',
+    target_role: 'lead',
+    status,
+    queued_intent_count: 0,
+    starting_batch_count: 0,
+    running_batch_count: status === 'running' ? 1 : 0,
+    active_enqueue_lease_count: 0,
+    slot_work: [],
+  };
+}
+
+function childTurn(status: 'running' | 'cancelled'): Record<string, unknown> {
+  return {
+    team_id: 'team-1',
+    team_run_id: 'run-1',
+    slot_id: 'slot-1',
+    role: 'teammate',
+    conversation_id: 'e2e-pet',
+    turn_id: 'turn-child',
+    status,
+  };
+}
 
 test.describe('pet agent reactions', () => {
   test('a new pet starts idle', async ({ page, electronApp }) => {
@@ -383,6 +439,180 @@ test.describe('pet agent reactions', () => {
       stream('text', { turnId: 'turn-after', data: { content: 'after the restart' } })
     );
     await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+  });
+
+  test('a failed acp tool call stays working and is not an error', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'message.stream', toolCall);
+    // pet does not subscribe to backend /ws yet. A later status `failed` must
+    // keep the working animation. It must not become error.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+    await publish(electronApp, 'message.stream', {
+      ...toolCall,
+      msg_id: 'e2e-acp-tool-failed',
+      data: {
+        update: {
+          sessionUpdate: 'tool_call_update',
+          status: 'failed',
+          toolCallId: 'call-1',
+          title: 'Read file',
+        },
+      },
+    });
+    await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+  });
+
+  test('a cancelled team run returns that conversation to idle', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'team.runStarted', teamRun('running'), 'event');
+    // pet does not subscribe to backend /ws yet. Cancel must leave idle with
+    // no done animation and no error, not a completion.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+    await publish(electronApp, 'team.runCancelled', teamRun('cancelled'), 'event');
+    await expectSettledIdle(electronApp);
+  });
+
+  test('a cancelled team child turn returns that conversation to idle', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'team.childTurnStarted', childTurn('running'));
+    // pet does not subscribe to backend /ws yet. Cancel must leave idle with
+    // no done animation and no error, not a completion.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+    await publish(electronApp, 'team.childTurnCancelled', childTurn('cancelled'));
+    await expectSettledIdle(electronApp);
+  });
+
+  test('a cron job that failed shows error', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(
+      electronApp,
+      'cron.job-executed',
+      { job_id: 'job-1', status: 'error', error: 'the job failed' },
+      'event'
+    );
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'error', rendered: 'error' });
+  });
+
+  test('a skipped or missed cron job leaves the pet idle', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'cron.job-executed', { job_id: 'job-1', status: 'skipped' });
+    await publish(electronApp, 'cron.job-executed', { job_id: 'job-2', status: 'missed' }, 'event');
+    // Idle today, and still the right result after the pet subscribes.
+    // skipped and missed are not a completion and not an error.
+    await expectAppearance(electronApp, idle, 800);
+  });
+
+  test('agent_status disconnected is ignored while the pet is idle', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('agent_status', {
+        data: { backend: 'claude', status: 'disconnected' },
+      })
+    );
+    // Idle today, and still the right result after the pet subscribes.
+    // A disconnect with no running turn is not an error.
+    await expectAppearance(electronApp, idle, 800);
+  });
+
+  test('agent_status disconnected shows error during a running turn', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('thinking', { turnId: 'turn-live', data: { content: 'working on it', status: 'thinking' } })
+    );
+    // pet does not subscribe to backend /ws yet. Disconnect is an error only
+    // while this conversation still has a running turn.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'thinking', rendered: 'thinking' });
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('agent_status', {
+        conversationId: 'e2e-pet',
+        turnId: 'turn-live',
+        data: { backend: 'claude', status: 'disconnected' },
+      }),
+      'event'
+    );
+    await expectAppearance(electronApp, { state: 'error', rendered: 'error' });
+  });
+
+  test('cancelling changes nothing until a stopped turn returns to idle', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('text', { turnId: 'turn-stop', data: { content: 'still running' } })
+    );
+    // pet does not subscribe to backend /ws yet. runtime.state cancelling must
+    // not change the animation. The following turn.completed with stopped must
+    // return to idle, with no done animation and no error. The looser
+    // "stopped is not an error" case still allows done.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+    await publish(electronApp, 'turn.completed', {
+      ...turnCompleted('ai_generating', 'turn-stop'),
+      status: 'running',
+      runtime: {
+        state: 'cancelling',
+        can_send_message: false,
+        has_task: true,
+        is_processing: true,
+        pending_confirmations: 0,
+        turn_id: 'turn-stop',
+      },
+    });
+    await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
+    await publish(electronApp, 'turn.completed', turnCompleted('stopped', 'turn-stop'), 'event');
+    await expectSettledIdle(electronApp);
+  });
+
+  test('team mailbox and task changes leave the pet idle', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    const message = {
+      id: 'mail-1',
+      team_id: 'team-1',
+      from_agent_id: 'lead',
+      to_agent_id: 'teammate',
+      msg_type: 'message',
+      content: 'status',
+      files: [],
+      read: false,
+      created_at: Date.now(),
+    };
+    const task = {
+      id: 'task-1',
+      team_id: 'team-1',
+      subject: 'Write the notes',
+      status: 'open',
+      blocked_by: [],
+      blocks: [],
+      created_at: Date.now(),
+      updated_at: Date.now(),
+    };
+    await publish(electronApp, 'team.mailboxChanged', { team_id: 'team-1', message, change: 'created' });
+    await publish(electronApp, 'team.mailboxChanged', {
+      team_id: 'team-1',
+      message: { ...message, read: true },
+      change: 'read',
+    });
+    await publish(electronApp, 'team.taskChanged', { team_id: 'team-1', task, change: 'created' }, 'event');
+    await publish(electronApp, 'team.taskChanged', {
+      team_id: 'team-1',
+      task: { ...task, status: 'done' },
+      change: 'updated',
+    });
+    // Idle today, and still the right result after the pet subscribes.
+    // Mailbox and task board updates never drive the pet.
+    await expectAppearance(electronApp, idle, 800);
   });
 });
 
