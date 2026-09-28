@@ -12,6 +12,11 @@
  * a harness failure. The pet sequence is `test.fail()` because the pet does
  * not subscribe to backend `/ws` yet.
  *
+ * A second case deletes that conversation through `DELETE /api/conversations/:id`
+ * while the turn is still `working`. AionCore publishes one
+ * `conversation.listChanged` frame for every delete. The pet must leave
+ * `working`. That case does not inject a scripted frame.
+ *
  * Screenshots, when `PET_E2E_CAPTURE_DIR` is set, come from
  * `webContents.capturePage()` on the pet page. An X11 `import -window root`
  * of that transparent window under Xvfb is a black square and is not a
@@ -170,6 +175,63 @@ test('a real aioncore turn through a stub agent shows thinking, working, done, t
     }
     const settled = seen.slice(cursor + 1).some((state) => SETTLE.has(state));
     expect(settled, `states: ${seen.join(' -> ')}`).toBe(true);
+  } finally {
+    if (customAgentId) {
+      await httpDelete(page, `/api/agents/custom/${customAgentId}`).catch(() => undefined);
+    }
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('deleting the working stub conversation through aioncore leaves the pet idle', async ({ page, electronApp }) => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-stub-delete-'));
+  let customAgentId: string | undefined;
+
+  try {
+    await enablePet(page, electronApp);
+
+    const agent = await httpPost<AgentMetadata>(page, '/api/agents/custom', {
+      name: 'e2e stub acp delete',
+      command: process.execPath,
+      args: [STUB_PATH],
+      env: [],
+    });
+    customAgentId = agent.id;
+
+    await expect
+      .poll(
+        async () => {
+          const health = await httpPost<AgentHealth>(page, `/api/agents/${encodeURIComponent(agent.id)}/health-check`);
+          return health.status ?? '';
+        },
+        { timeout: 30_000 }
+      )
+      .toBe('online');
+
+    const conversation = await httpPost<{ id: string }>(page, '/api/conversations', {
+      name: 'pet delete check',
+      assistant: { id: `bare:${agent.id}` },
+      extra: { workspace },
+    });
+
+    await httpPost(page, `/api/conversations/${conversation.id}/messages`, {
+      content: 'hello pet',
+      files: [],
+    });
+
+    // The stub holds the text chunk for 800ms. Delete during that window.
+    // Idle must show within 1.5s, before a finished turn's 4s auto-return.
+    // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
+    await expect
+      .poll(async () => readPetAppearance(electronApp), { timeout: 15_000 })
+      .toEqual({ state: 'working', rendered: 'working' });
+
+    await httpDelete(page, `/api/conversations/${encodeURIComponent(conversation.id)}`);
+
+    await expect
+      .poll(async () => readPetAppearance(electronApp), { timeout: 1_500 })
+      .toEqual({ state: 'idle', rendered: 'idle' });
   } finally {
     if (customAgentId) {
       await httpDelete(page, `/api/agents/custom/${customAgentId}`).catch(() => undefined);

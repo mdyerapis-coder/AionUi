@@ -23,10 +23,12 @@
  *
  * A dropped `/ws` in the middle of a turn loses the terminal frame. After
  * reconnect the pet must leave `working` for idle within a few seconds.
- * Deleting that conversation (`conversation.listChanged`, `action: 'deleted'`)
- * must drop its state and show the other live conversation, or idle when it
- * was the only one. Both are `test.fail()` until the pet is on `/ws` and
- * those resets exist.
+ * Deleting that conversation is only `conversation.listChanged`. The payload
+ * is snake_case `{ user_id, conversation_id, action: "deleted", source }`.
+ * There is no `deleted` boolean. That delete must drop the chat and show the
+ * other live conversation, or idle when it was the only one. Both are
+ * `test.fail()` until the pet is on `/ws` and those resets exist. The live
+ * stub spec deletes through aioncore itself so the real frame is checked too.
  *
  * Nothing here calls the state machine or `bridge.emit`.
  */
@@ -576,12 +578,20 @@ test.describe('pet agent reactions', () => {
     // pet does not subscribe to backend /ws yet. After it does, deleting
     // conv-work must clear that conversation and show conv-done. With only
     // one conversation, the same delete returns to idle.
+    // AionCore's only delete signal. No `deleted` boolean.
     test.fail(true, NOT_SUBSCRIBED);
     await expectAppearance(electronApp, { state: 'working', rendered: 'working' });
-    await publish(electronApp, 'conversation.listChanged', {
-      conversation_id: 'conv-work',
-      action: 'deleted',
-    });
+    await publish(
+      electronApp,
+      'conversation.listChanged',
+      {
+        user_id: 'e2e-user',
+        conversation_id: 'conv-work',
+        action: 'deleted',
+        source: 'user',
+      },
+      'event'
+    );
     await expectAppearance(electronApp, { state: 'done', rendered: 'done' });
   });
 
