@@ -186,6 +186,7 @@ test('a real aioncore turn through a stub agent shows thinking, working, done, t
 test('deleting the working stub conversation through aioncore leaves the pet idle', async ({ page, electronApp }) => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-stub-delete-'));
   let customAgentId: string | undefined;
+  let conversationId: string | undefined;
 
   try {
     await enablePet(page, electronApp);
@@ -208,11 +209,22 @@ test('deleting the working stub conversation through aioncore leaves the pet idl
       )
       .toBe('online');
 
+    await expect
+      .poll(
+        async () => {
+          const assistants = await httpGet<AssistantRow[]>(page, '/api/assistants');
+          return assistants.find((row) => row.id === `bare:${agent.id}`)?.agent_status ?? '';
+        },
+        { timeout: 10_000 }
+      )
+      .toBe('online');
+
     const conversation = await httpPost<{ id: string }>(page, '/api/conversations', {
       name: 'pet delete check',
       assistant: { id: `bare:${agent.id}` },
       extra: { workspace },
     });
+    conversationId = conversation.id;
 
     await httpPost(page, `/api/conversations/${conversation.id}/messages`, {
       content: 'hello pet',
@@ -233,6 +245,9 @@ test('deleting the working stub conversation through aioncore leaves the pet idl
       .poll(async () => readPetAppearance(electronApp), { timeout: 1_500 })
       .toEqual({ state: 'idle', rendered: 'idle' });
   } finally {
+    if (conversationId) {
+      await httpDelete(page, `/api/conversations/${encodeURIComponent(conversationId)}`).catch(() => undefined);
+    }
     if (customAgentId) {
       await httpDelete(page, `/api/agents/custom/${customAgentId}`).catch(() => undefined);
     }
