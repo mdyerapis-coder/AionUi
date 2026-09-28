@@ -16,10 +16,10 @@ export class PetStateMachine {
 
   setDnd(enabled: boolean): void {
     this.dnd = enabled;
-    if (enabled) {
-      this.clearPending();
-      this.clearAutoReturn();
-    }
+    if (!enabled) return;
+    // Drop a queued activity transition. Leave the current state's auto-return
+    // timer running so a transient animation still finishes and goes idle.
+    this.clearPending();
   }
 
   getDnd(): boolean {
