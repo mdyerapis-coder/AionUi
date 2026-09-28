@@ -14,6 +14,13 @@
  * idle for cron `skipped` / `missed`, a disconnect while idle, and team
  * mailbox or task changes is already correct, so those stay real passes.
  *
+ * Claude's AskUserQuestion is its own `ask` frame (`message.stream` type
+ * `ask`), not `acp_permission`. `acp_permission` data is untagged and arrives
+ * as either a request (`tool_call` plus `options`) or a converted confirmation
+ * (`id`, `call_id`, no `tool_call`). Both, and an `ask` mid-turn, must show
+ * needs-confirmation. Upstream v2.2.2 no longer sends `confirmation.add`, so
+ * nothing new depends on that channel.
+ *
  * Nothing here calls the state machine or `bridge.emit`.
  */
 import { test, expect, type ElectronApplication } from '../fixtures';
@@ -154,6 +161,57 @@ const permission = stream('acp_permission', {
   },
 });
 
+/** Request shape from `AcpPermissionRequestData`. `title` is optional. */
+const permissionRequest = stream('acp_permission', {
+  data: {
+    session_id: 'e2e-pet',
+    tool_call: {
+      tool_call_id: 'call-request',
+      title: 'Run tests',
+      kind: 'execute',
+      raw_input: { command: 'bun test' },
+    },
+    options: [
+      { option_id: 'allow-once', name: 'Allow once', kind: 'allow_once' },
+      { option_id: 'allow-always', name: 'Allow always', kind: 'allow_always' },
+      { option_id: 'reject-once', name: 'Reject once', kind: 'reject_once' },
+      { option_id: 'reject-always', name: 'Reject always', kind: 'reject_always' },
+    ],
+  },
+});
+
+/** Converted `Confirmation`. No `tool_call`. Options are `{ label, value }`. */
+const permissionConfirmation = stream('acp_permission', {
+  data: {
+    id: 'conf-request',
+    call_id: 'call-request',
+    title: 'Run tests',
+    description: 'Allow bun test?',
+    command_type: 'execute',
+    options: [
+      { label: 'Allow once', value: 'allow-once' },
+      { label: 'Reject once', value: 'reject-once' },
+    ],
+  },
+});
+
+/** Claude AskUserQuestion. Wire tag `ask`, not `acp_permission`. */
+const askQuestion = stream('ask', {
+  turnId: 'turn-ask',
+  data: {
+    session_id: 'e2e-pet',
+    request_id: 'req-ask-1',
+    questions: [
+      {
+        question: 'Which file should I edit?',
+        header: 'File',
+        multi_select: false,
+        options: [{ label: 'a.ts', description: 'the module' }, { label: 'b.ts' }],
+      },
+    ],
+  },
+});
+
 const confirmation = {
   id: 'conf-1',
   call_id: 'call-1',
@@ -260,6 +318,45 @@ test.describe('pet agent reactions', () => {
     await enablePet(page, electronApp);
     await publish(electronApp, 'message.stream', permission);
     // pet does not subscribe to backend /ws yet
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'notification', rendered: 'notification' });
+  });
+
+  test('an ask frame mid-turn shows the needs-confirmation state', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(
+      electronApp,
+      'message.stream',
+      stream('thinking', { turnId: 'turn-ask', data: { content: 'need a choice', status: 'thinking' } })
+    );
+    // pet does not subscribe to backend /ws yet. After it does, Claude's
+    // AskUserQuestion arrives as message.stream type `ask`, not acp_permission,
+    // and a question during a running turn must show needs-confirmation.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'thinking', rendered: 'thinking' });
+    await publish(electronApp, 'message.stream', askQuestion);
+    await expectAppearance(electronApp, { state: 'notification', rendered: 'notification' });
+  });
+
+  test('shows the needs-confirmation state for an acp permission request', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'message.stream', permissionRequest);
+    // pet does not subscribe to backend /ws yet. After it does, the request
+    // shape (tool_call with kind and raw_input, options with option_id) must
+    // show needs-confirmation. title on tool_call is optional.
+    test.fail(true, NOT_SUBSCRIBED);
+    await expectAppearance(electronApp, { state: 'notification', rendered: 'notification' });
+  });
+
+  test('shows the needs-confirmation state for an acp permission converted to a confirmation', async ({
+    page,
+    electronApp,
+  }) => {
+    await enablePet(page, electronApp);
+    await publish(electronApp, 'message.stream', permissionConfirmation, 'event');
+    // pet does not subscribe to backend /ws yet. After it does, the converted
+    // confirmation shape (id, call_id, title, description, command_type,
+    // options as label/value, and no tool_call) must show needs-confirmation.
     test.fail(true, NOT_SUBSCRIBED);
     await expectAppearance(electronApp, { state: 'notification', rendered: 'notification' });
   });
