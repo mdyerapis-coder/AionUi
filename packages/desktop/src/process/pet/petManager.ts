@@ -27,6 +27,7 @@ import {
   type PetPoint,
 } from './petPlacement';
 import type { PetSize, PetState } from './petTypes';
+import { publishPetOverlayVisible } from './petVisibility';
 
 /**
  * Check whether the current environment can support desktop pet windows.
@@ -114,6 +115,7 @@ export function createPetWindow(): void {
   if (petWindow && !petWindow.isDestroyed()) {
     petWindow.show();
     petWindow.focus();
+    syncPetOverlayVisibility();
     return;
   }
 
@@ -221,6 +223,7 @@ export function createPetWindow(): void {
   });
 
   console.log('[Pet] Pet windows created');
+  syncPetOverlayVisibility();
 }
 
 /**
@@ -262,16 +265,33 @@ export function destroyPetWindow(): void {
   petWindow = null;
 
   console.log('[Pet] Pet windows destroyed');
+  syncPetOverlayVisibility();
+}
+
+/** True when the pet render window exists and is showing. */
+export function isPetWindowVisible(): boolean {
+  return Boolean(petWindow && !petWindow.isDestroyed() && petWindow.isVisible());
 }
 
 export function showPetWindow(): void {
   if (petWindow && !petWindow.isDestroyed()) petWindow.show();
   if (petHitWindow && !petHitWindow.isDestroyed()) petHitWindow.show();
+  syncPetOverlayVisibility();
 }
 
 export function hidePetWindow(): void {
   if (petWindow && !petWindow.isDestroyed()) petWindow.hide();
   if (petHitWindow && !petHitWindow.isDestroyed()) petHitWindow.hide();
+  syncPetOverlayVisibility();
+}
+
+/**
+ * Publish overlay visibility for the tray menu.
+ * This does not write `pet.enabled`. Settings creates or destroys the windows;
+ * show and hide only change whether those windows are on screen.
+ */
+function syncPetOverlayVisibility(): void {
+  publishPetOverlayVisible(isPetWindowVisible());
 }
 
 export function getEventBridge(): PetEventBridge | null {
