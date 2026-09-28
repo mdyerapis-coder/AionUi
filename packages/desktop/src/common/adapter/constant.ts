@@ -22,4 +22,5 @@ export const REALTIME_CHANNELS = {
   teamRunCompleted: 'team.runCompleted',
   teamRunFailed: 'team.runFailed',
   cronJobExecuted: 'cron.job-executed',
+  conversationListChanged: 'conversation.listChanged',
 } as const;

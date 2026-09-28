@@ -386,7 +386,7 @@ export const conversation = {
       last_message,
     };
   }),
-  listChanged: wsEmitter<IConversationListChangedEvent>('conversation.listChanged'),
+  listChanged: wsEmitter<IConversationListChangedEvent>(REALTIME_CHANNELS.conversationListChanged),
   // Uses httpRequest directly (instead of httpGet + withResponseMap) because the
   // response mapper needs `workspace` from params to build fullPath/relativePath,
   // and withResponseMap's map function does not receive the original params.

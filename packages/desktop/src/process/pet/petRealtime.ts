@@ -63,6 +63,8 @@ export function startPetRealtimeClient(options: PetRealtimeClientOptions): PetRe
   /** Bumped each time a new socket is opened, so a replaced socket cannot reconnect. */
   let generation = 0;
   let activeKey = '';
+  /** Set after the first socket opens. Later opens are reconnects and drop stale turns. */
+  let hasOpened = false;
 
   const scheduleReconnect = (): void => {
     if (stopped || reconnectTimer) return;
@@ -113,6 +115,17 @@ export function startPetRealtimeClient(options: PetRealtimeClientOptions): PetRe
     current.on('open', () => {
       if (generation !== currentGeneration) return;
       attempt = 0;
+      // The backend does not replay the terminal frame for a turn that was in
+      // flight when the socket dropped. Forget that stuck activity. The first
+      // successful open is not a reconnect and must not wipe state.
+      if (hasOpened) {
+        try {
+          options.bridge.resetAfterReconnect();
+        } catch (error) {
+          console.warn('[PetRealtime] failed to reset activity after reconnect:', error);
+        }
+      }
+      hasOpened = true;
     });
 
     current.on('message', (data) => {
