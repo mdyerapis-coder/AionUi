@@ -14,6 +14,7 @@ import {
   petSnapshot,
   petSwitch,
   petWindow,
+  readTrayShowHideLabel,
   resetPet,
   waitForPetWindows,
 } from './helpers';
@@ -78,6 +79,74 @@ test.describe('pet show and hide', () => {
     await expect
       .poll(async () => (await petSnapshot(electronApp)).windows.some((win) => win.visible), { timeout: 1_500 })
       .toBe(false);
+  });
+
+  test('the tray item reads Hide while the pet is visible', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+
+    // Bug: the item label is always pet.showHide ("Show/Hide").
+    test.fail(true, 'Bug: the tray pet item is always "Show/Hide", not Hide while the pet is visible.');
+    expect(await readTrayShowHideLabel(electronApp)).toBe('Hide');
+  });
+
+  test('the tray item reads Show after the pet is hidden from its menu', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await invokeContextItem(electronApp, 'hide');
+    await expect
+      .poll(async () => (await petSnapshot(electronApp)).windows.every((win) => !win.visible), { timeout: 5_000 })
+      .toBe(true);
+
+    // Bug: hiding from the pet menu does not change the tray label.
+    test.fail(true, 'Bug: the tray pet item stays "Show/Hide" after the pet menu hides the pet.');
+    expect(await readTrayShowHideLabel(electronApp)).toBe('Show');
+  });
+
+  test('the tray item reads Show after Settings turns the pet off', async ({ page, electronApp }) => {
+    await enablePet(page, electronApp);
+    await openPetSettings(page);
+    await petSwitch(page, 0).click();
+    await expect.poll(async () => (await petSnapshot(electronApp)).windows.length, { timeout: 5_000 }).toBe(0);
+
+    // Bug: destroying the pet from Settings does not change the tray label.
+    test.fail(true, 'Bug: the tray pet item stays "Show/Hide" after Settings turns the pet off.');
+    expect(await readTrayShowHideLabel(electronApp)).toBe('Show');
+  });
+
+  test('tray Show/Hide does not change whether the pet is enabled', async ({ page, electronApp }) => {
+    const enabled = await enablePet(page, electronApp);
+    expect(enabled.saved.enabled).toBe(true);
+
+    await invokeTrayItem(electronApp, 'show-hide');
+    expect((await petSnapshot(electronApp)).saved.enabled).toBe(true);
+
+    await invokeContextItem(electronApp, 'hide');
+    await expect
+      .poll(async () => (await petSnapshot(electronApp)).windows.every((win) => !win.visible), { timeout: 5_000 })
+      .toBe(true);
+    expect((await petSnapshot(electronApp)).saved.enabled).toBe(true);
+
+    await invokeTrayItem(electronApp, 'show-hide');
+    await expect
+      .poll(async () => (await petSnapshot(electronApp)).windows.every((win) => win.visible), { timeout: 5_000 })
+      .toBe(true);
+    expect((await petSnapshot(electronApp)).saved.enabled).toBe(true);
+  });
+
+  test('tray Show does not create a pet while the settings switch is off', async ({ electronApp }) => {
+    const before = await petSnapshot(electronApp);
+    expect(before.saved.enabled).toBe(false);
+    expect(before.windows).toHaveLength(0);
+
+    await invokeTrayItem(electronApp, 'show-hide');
+    await expect
+      .poll(
+        async () => {
+          const snap = await petSnapshot(electronApp);
+          return { windows: snap.windows.length, enabled: snap.saved.enabled };
+        },
+        { timeout: 1_500 }
+      )
+      .toEqual({ windows: 0, enabled: false });
   });
 });
 

@@ -876,6 +876,11 @@ function installPetE2EApi(): void {
       await e2eInvokeTrayPetItem(which);
     },
 
+    async readTrayShowHideLabel(): Promise<string> {
+      const { e2eReadTrayPetShowHideLabel } = await import('@process/utils/tray');
+      return e2eReadTrayPetShowHideLabel();
+    },
+
     async dragStart(): Promise<void> {
       await runInHitWindow('window.petHitAPI.dragStart()');
     },

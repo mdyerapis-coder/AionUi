@@ -341,6 +341,41 @@ const findTrayMenuItem = (menu: Electron.Menu, label: string): Electron.MenuItem
   return undefined;
 };
 
+const assertE2ETrayAccess = (): void => {
+  if (process.env.AIONUI_E2E_TEST !== '1') {
+    throw new Error('Tray pet actions can only be invoked from E2E');
+  }
+};
+
+/**
+ * Show/hide item inside the Desktop Pet submenu.
+ *
+ * The label is `pet.showHide` until the tray tracks visibility. A later build
+ * uses `pet.hide` while the overlay is showing and `common.show` otherwise.
+ * Matching all three keeps this hook working on both menus. The search stays
+ * inside the pet submenu so a conversation titled "Show" cannot win.
+ */
+const findPetShowHideItem = (menu: Electron.Menu): Electron.MenuItem | undefined => {
+  const marker = i18n.t('pet.desktopPet');
+  const labels = new Set([i18n.t('pet.showHide'), i18n.t('pet.hide'), i18n.t('common.show')]);
+  for (const item of menu.items) {
+    if (!item.label.includes(marker) || !item.submenu) continue;
+    return item.submenu.items.find((entry) => labels.has(entry.label));
+  }
+  return undefined;
+};
+
+/** Label of the tray Desktop Pet show/hide item. E2E only. */
+export const e2eReadTrayPetShowHideLabel = async (): Promise<string> => {
+  assertE2ETrayAccess();
+  const menu = await buildTrayContextMenu();
+  const item = findPetShowHideItem(menu);
+  if (!item) {
+    throw new Error('Tray menu is missing the pet show/hide item');
+  }
+  return item.label;
+};
+
 /**
  * Activate one Desktop Pet item on the tray menu.
  *
@@ -349,21 +384,17 @@ const findTrayMenuItem = (menu: Electron.Menu, label: string): Electron.MenuItem
  * own click handler (checkbox/radio state included) rather than a copy of it.
  */
 export const e2eInvokeTrayPetItem = async (which: TrayPetAction): Promise<void> => {
-  if (process.env.AIONUI_E2E_TEST !== '1') {
-    throw new Error('Tray pet actions can only be invoked from E2E');
-  }
-  const label =
-    which === 'show-hide'
-      ? i18n.t('pet.showHide')
-      : which === 'size-200'
-        ? i18n.t('pet.sizeSmall', { px: 200 })
-        : which === 'size-280'
-          ? i18n.t('pet.sizeMedium', { px: 280 })
-          : i18n.t('pet.sizeLarge', { px: 360 });
+  assertE2ETrayAccess();
   const menu = await buildTrayContextMenu();
-  const item = findTrayMenuItem(menu, label);
+  const sizeLabel =
+    which === 'size-200'
+      ? i18n.t('pet.sizeSmall', { px: 200 })
+      : which === 'size-280'
+        ? i18n.t('pet.sizeMedium', { px: 280 })
+        : i18n.t('pet.sizeLarge', { px: 360 });
+  const item = which === 'show-hide' ? findPetShowHideItem(menu) : findTrayMenuItem(menu, sizeLabel);
   if (!item) {
-    throw new Error(`Tray menu is missing ${which} (${label})`);
+    throw new Error(`Tray menu is missing ${which}`);
   }
   item.click();
   // The show/hide and resize handlers import petManager asynchronously.

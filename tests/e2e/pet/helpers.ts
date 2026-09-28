@@ -44,6 +44,7 @@ type PetE2EApi = {
   snapshot: () => Promise<PetSnapshot>;
   invokeContextItem: (which: string) => void;
   invokeTrayItem: (which: string) => Promise<void>;
+  readTrayShowHideLabel: () => Promise<string>;
   dragStart: () => Promise<void>;
   dragEnd: () => Promise<void>;
   clickBody: (data: { side: string; count: number }) => Promise<void>;
@@ -171,6 +172,15 @@ export async function invokeTrayItem(electronApp: ElectronApplication, which: st
     if (!api) throw new Error('Pet E2E API is not installed');
     await api.invokeTrayItem(action);
   }, which);
+}
+
+/** Label of the Desktop Pet show/hide tray item, from the real menu template. */
+export async function readTrayShowHideLabel(electronApp: ElectronApplication): Promise<string> {
+  return electronApp.evaluate(async () => {
+    const api = globalThis.__AIONUI_E2E_PET__;
+    if (!api) throw new Error('Pet E2E API is not installed');
+    return api.readTrayShowHideLabel();
+  });
 }
 
 export async function clickPet(electronApp: ElectronApplication, count: number, side = 'left'): Promise<void> {

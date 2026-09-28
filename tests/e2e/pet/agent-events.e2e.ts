@@ -771,13 +771,22 @@ test.describe('pet do-not-disturb', () => {
 
     await invokeContextItem(electronApp, 'dnd');
     await expect.poll(async () => (await petSnapshot(electronApp)).dnd, { timeout: 1_000 }).toBe(true);
+    const armed = await petSnapshot(electronApp);
+    expect(armed.state).toBe('attention');
 
-    // Bug: setDnd clears the auto-return timer and rejects new states, so the current animation stays on screen.
+    // Do-not-disturb must leave the attention auto-return running. That delay
+    // is 3000ms from when attention started, not from when DND was turned on,
+    // and not an instant jump to idle. Wait until that deadline plus a short
+    // bound. On the current build setDnd clears the timer, so attention is
+    // still showing when the deadline passes.
+    const attentionStartedAt = armed.stateChangedAt ?? Date.now();
+    const attentionAutoReturnMs = 3_000;
+    const idleDeadlineMs = attentionStartedAt + attentionAutoReturnMs + 1_500 - Date.now();
     test.fail(
       true,
       'Bug: turning on do-not-disturb freezes the current animation instead of returning the pet to idle.'
     );
-    await expectAppearance(electronApp, idle, 1_000);
+    await expectAppearance(electronApp, idle, Math.max(idleDeadlineMs, 500));
   });
 
   test('do-not-disturb ignores a later agent event', async ({ page, electronApp }) => {
