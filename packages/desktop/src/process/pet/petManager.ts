@@ -22,8 +22,9 @@ import {
 import {
   isPetPoint,
   normalizePetSize,
+  petPointsWithin,
+  petPositionReadToSave,
   resolvePetPosition,
-  shouldPersistPetPosition,
   type PetPoint,
 } from './petPlacement';
 import type { PetSize, PetState } from './petTypes';
@@ -59,6 +60,8 @@ let currentDnd = false;
 let savedPosition: PetPoint | null = null;
 /** Last coordinates setPosition was asked to apply during the current drag. */
 let lastRequestedPosition: PetPoint | null = null;
+/** Window position read when the current drag started. Used to detect an ignored move. */
+let positionBeforeMove: PetPoint | null = null;
 let dragTimer: ReturnType<typeof setInterval> | null = null;
 let dragWatchdog: ReturnType<typeof setTimeout> | null = null;
 let dragOffsetX = 0;
@@ -92,6 +95,9 @@ let hitIgnoreWatchdog: ReturnType<typeof setInterval> | null = null;
 // Last ignore state the hit window was set to (tracked via the IPC handler so
 // the watchdog can tell whether it's already safe).
 let lastHitIgnoreState = true;
+// Draw window is created with ignore-mouse-events and never toggled. Electron
+// has no getter for that flag, so E2E reads this record of the main-process call.
+let drawIgnoresMouse = true;
 // Whether tool-call confirmations should be routed to the pet's bubble window.
 // When false, the pet still runs normally but confirmation requests stay in the
 // main chat window. Updated at runtime via setPetConfirmEnabled() and read on
@@ -148,6 +154,7 @@ export function createPetWindow(): void {
   }
 
   petWindow.setIgnoreMouseEvents(true);
+  drawIgnoresMouse = true;
 
   // Hit detection window (body area only, 60% of pet size)
   const hitSize = Math.round(currentSize * 0.6);
@@ -263,6 +270,8 @@ export function destroyPetWindow(): void {
     petWindow.destroy();
   }
   petWindow = null;
+  lastRequestedPosition = null;
+  positionBeforeMove = null;
 
   console.log('[Pet] Pet windows destroyed');
   syncPetOverlayVisibility();
@@ -494,6 +503,7 @@ function registerIpcHandlers(): void {
     // Position APIs can throw or no-op on native Wayland. Skip the drag rather
     // than computing an offset from garbage coordinates.
     if (!windowPos) return;
+    positionBeforeMove = windowPos;
     dragOffsetX = cursor.x - windowPos.x;
     dragOffsetY = cursor.y - windowPos.y;
 
@@ -693,7 +703,9 @@ function endDrag(): void {
   const restoreTo: PetState = preDragState ?? 'idle';
   preDragState = null;
   const requested = lastRequestedPosition;
+  const before = positionBeforeMove;
   lastRequestedPosition = null;
+  positionBeforeMove = null;
   stateMachine?.forceState(restoreTo);
   idleTicker?.resetIdle();
   if (petWindow && !petWindow.isDestroyed()) {
@@ -701,7 +713,7 @@ function endDrag(): void {
     if (actual) {
       updateAnchorBounds({ x: actual.x, y: actual.y, width: currentSize, height: currentSize });
     }
-    persistPositionIfReliable(requested, actual);
+    persistPositionIfReliable(before, requested, actual);
   }
 }
 
@@ -825,31 +837,54 @@ function resetPosition(): void {
   // Reset puts the pet back where createPetWindow would have put it for a
   // fresh launch — the bottom-right of the display that currently hosts the
   // main AionUi window.
+  const before = readPetPosition();
   const target = computeInitialPosition(currentSize);
   const moved = safeSetPosition(petWindow, target.x, target.y);
 
   const hitOffset = Math.round(currentSize * 0.2);
   safeSetPosition(petHitWindow, target.x + hitOffset, target.y + hitOffset);
 
-  idleTicker?.setPetBounds(target.x, target.y, currentSize, currentSize);
-
-  // Update confirm window anchor
-  updateAnchorBounds({ x: target.x, y: target.y, width: currentSize, height: currentSize });
+  const actual = readPetPosition();
+  const landed = actual ?? before;
+  if (landed) {
+    idleTicker?.setPetBounds(landed.x, landed.y, currentSize, currentSize);
+    updateAnchorBounds({ x: landed.x, y: landed.y, width: currentSize, height: currentSize });
+  }
   if (moved) {
-    persistPositionIfReliable(target, readPetPosition());
+    persistPositionIfReliable(before, target, actual);
   }
 }
 
 function readPetPosition(): PetPoint | null {
   if (!petWindow || petWindow.isDestroyed()) return null;
+  return readWindowPoint(petWindow);
+}
+
+/**
+ * Read the window's real origin. `getBounds` and `getPosition` must agree;
+ * a disagreement is not a position we can store. Either call may throw or
+ * no-op on native Wayland, and a failure of one falls through to the other.
+ */
+function readWindowPoint(win: BrowserWindow): PetPoint | null {
+  let fromBounds: PetPoint | null = null;
+  let fromPosition: PetPoint | null = null;
   try {
-    const [x, y] = petWindow.getPosition();
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-    return { x, y };
+    const bounds = win.getBounds();
+    if (isPetPoint(bounds)) fromBounds = { x: bounds.x, y: bounds.y };
+  } catch (error) {
+    console.warn('[Pet] getBounds failed:', error);
+  }
+  try {
+    const [x, y] = win.getPosition();
+    if (Number.isFinite(x) && Number.isFinite(y)) fromPosition = { x, y };
   } catch (error) {
     console.warn('[Pet] getPosition failed:', error);
-    return null;
   }
+  if (fromBounds && fromPosition) {
+    if (!petPointsWithin(fromBounds, fromPosition)) return null;
+    return fromBounds;
+  }
+  return fromBounds ?? fromPosition;
 }
 
 function safeSetPosition(win: BrowserWindow, x: number, y: number): boolean {
@@ -862,9 +897,9 @@ function safeSetPosition(win: BrowserWindow, x: number, y: number): boolean {
   }
 }
 
-function persistPositionIfReliable(requested: PetPoint | null, actual: PetPoint | null): void {
-  if (!actual || !shouldPersistPetPosition(requested, actual)) return;
-  const point = { x: actual.x, y: actual.y };
+function persistPositionIfReliable(before: PetPoint | null, requested: PetPoint | null, actual: PetPoint | null): void {
+  const point = petPositionReadToSave(before, requested, actual);
+  if (!point) return;
   const previous = savedPosition;
   savedPosition = point;
   void ProcessConfig.set('pet.position', point).catch((error) => {
@@ -872,3 +907,281 @@ function persistPositionIfReliable(requested: PetPoint | null, actual: PetPoint 
     console.error('[Pet] Failed to persist pet position:', error);
   });
 }
+
+function buildPetContextMenu(): Electron.Menu {
+  const sizeKeys = { 200: 'pet.sizeSmall', 280: 'pet.sizeMedium', 360: 'pet.sizeLarge' } as const;
+  return Menu.buildFromTemplate([
+    {
+      label: i18n.t('pet.pat'),
+      click: () => {
+        if (stateMachine && idleTicker) {
+          idleTicker.resetIdle();
+          stateMachine.requestState('happy');
+        }
+      },
+    },
+    { type: 'separator' },
+    {
+      label: i18n.t('pet.size'),
+      submenu: ([200, 280, 360] as PetSize[]).map((size) => ({
+        label: i18n.t(sizeKeys[size], { px: size }),
+        type: 'radio' as const,
+        checked: currentSize === size,
+        click: () => {
+            void commitPetSize(size).catch(() => {
+              // commitPetSize already logged the failure and restored the previous size.
+            });
+          },
+      })),
+    },
+    { type: 'separator' },
+    {
+      label: i18n.t('pet.dnd'),
+      type: 'checkbox',
+      checked: stateMachine?.getDnd() ?? currentDnd,
+      click: (menuItem) => {
+        void commitPetDnd(menuItem.checked).catch(() => {
+          // commitPetDnd already logged the failure and restored the previous mode.
+        });
+      },
+    },
+    { type: 'separator' },
+    {
+      label: i18n.t('pet.resetPosition'),
+      click: () => resetPosition(),
+    },
+    {
+      label: i18n.t('pet.hide'),
+      click: () => hidePetWindow(),
+    },
+  ]);
+}
+
+type PetContextAction = 'pat' | 'hide' | 'dnd' | 'reset-position' | 'size-200' | 'size-280' | 'size-360';
+
+type TrayPetAction = 'show-hide' | 'size-200' | 'size-280' | 'size-360';
+
+type PetE2EWindowSnap = {
+  role: 'draw' | 'hit' | 'confirm';
+  url: string;
+  visible: boolean;
+  alwaysOnTop: boolean;
+  focusable: boolean;
+  frame: boolean | null;
+  transparent: boolean | null;
+  backgroundColor: string;
+  ignoreMouseEvents: boolean;
+  bounds: { x: number; y: number; width: number; height: number };
+};
+
+type PetE2ESnapshot = {
+  state: PetState | null;
+  renderedState: string | null;
+  stateChangedAt: number | null;
+  dnd: boolean;
+  size: PetSize;
+  confirmBubbleEnabled: boolean;
+  ozonePlatform: string;
+  cursor: { x: number; y: number };
+  primaryWorkArea: { x: number; y: number; width: number; height: number };
+  displayCount: number;
+  saved: { enabled: boolean; size: number; dnd: boolean };
+  windows: PetE2EWindowSnap[];
+};
+
+const PET_E2E_GLOBAL = '__AIONUI_E2E_PET__';
+
+function isE2ETest(): boolean {
+  return process.env.AIONUI_E2E_TEST === '1';
+}
+
+function findMenuItem(menu: Electron.Menu, label: string): Electron.MenuItem | undefined {
+  for (const item of menu.items) {
+    if (item.label === label) return item;
+    if (item.submenu) {
+      const nested = findMenuItem(item.submenu, label);
+      if (nested) return nested;
+    }
+  }
+  return undefined;
+}
+
+function contextActionLabel(which: PetContextAction): string {
+  switch (which) {
+    case 'pat':
+      return i18n.t('pet.pat');
+    case 'hide':
+      return i18n.t('pet.hide');
+    case 'dnd':
+      return i18n.t('pet.dnd');
+    case 'reset-position':
+      return i18n.t('pet.resetPosition');
+    case 'size-200':
+      return i18n.t('pet.sizeSmall', { px: 200 });
+    case 'size-280':
+      return i18n.t('pet.sizeMedium', { px: 280 });
+    case 'size-360':
+      return i18n.t('pet.sizeLarge', { px: 360 });
+  }
+}
+
+function readBooleanOption(win: BrowserWindow, key: 'frame' | 'transparent'): boolean | null {
+  const record = win as unknown as Record<string, unknown>;
+  const candidates = [record.browserWindowOptions, record._browserWindowOptions, record.options];
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object' || !(key in candidate)) continue;
+    const value = (candidate as Record<string, unknown>)[key];
+    if (typeof value === 'boolean') return value;
+  }
+  return null;
+}
+
+function petWindowRole(url: string): PetE2EWindowSnap['role'] | null {
+  if (url.includes('pet-hit')) return 'hit';
+  if (url.includes('pet-confirm')) return 'confirm';
+  if (url.includes('pet.html') || url.includes('/pet/pet')) return 'draw';
+  return null;
+}
+
+function ignoreMouseFor(role: PetE2EWindowSnap['role']): boolean {
+  if (role === 'draw') return drawIgnoresMouse;
+  if (role === 'hit') return lastHitIgnoreState;
+  return false;
+}
+
+async function readRenderedState(): Promise<string | null> {
+  if (!petWindow || petWindow.isDestroyed()) return null;
+  try {
+    const data: unknown = await petWindow.webContents.executeJavaScript(
+      "document.querySelector('#pet')?.getAttribute('data') ?? ''"
+    );
+    if (typeof data !== 'string' || data.length === 0) return null;
+    const match = /([^/]+)\.svg(?:$|\?)/.exec(data);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function runInHitWindow(source: string): Promise<void> {
+  if (!petHitWindow || petHitWindow.isDestroyed()) {
+    throw new Error('Pet hit window is not open');
+  }
+  await petHitWindow.webContents.executeJavaScript(source);
+}
+
+function installPetE2EApi(): void {
+  if (!isE2ETest()) return;
+
+  const api = {
+    async snapshot(): Promise<PetE2ESnapshot> {
+      const workArea = screen.getPrimaryDisplay().workArea;
+      const [enabled, savedSize, savedDnd] = await Promise.all([
+        ProcessConfig.get('pet.enabled'),
+        ProcessConfig.get('pet.size'),
+        ProcessConfig.get('pet.dnd'),
+      ]);
+      const windows: PetE2EWindowSnap[] = [];
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (win.isDestroyed()) continue;
+        const url = win.webContents.getURL();
+        const role = petWindowRole(url);
+        if (!role) continue;
+        const [x, y] = win.getPosition();
+        const [width, height] = win.getSize();
+        windows.push({
+          role,
+          url,
+          visible: win.isVisible(),
+          alwaysOnTop: win.isAlwaysOnTop(),
+          focusable: win.isFocusable(),
+          frame: readBooleanOption(win, 'frame'),
+          transparent: readBooleanOption(win, 'transparent'),
+          backgroundColor: win.getBackgroundColor(),
+          ignoreMouseEvents: ignoreMouseFor(role),
+          bounds: { x, y, width, height },
+        });
+      }
+      return {
+        state: stateMachine?.getCurrentState() ?? null,
+        renderedState: await readRenderedState(),
+        stateChangedAt: stateMachine?.getChangedAt() ?? null,
+        dnd: stateMachine?.getDnd() ?? false,
+        size: currentSize,
+        confirmBubbleEnabled,
+        ozonePlatform: app.commandLine.getSwitchValue('ozone-platform'),
+        cursor: screen.getCursorScreenPoint(),
+        primaryWorkArea: { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
+        displayCount: screen.getAllDisplays().length,
+        saved: {
+          enabled: enabled ?? false,
+          size: typeof savedSize === 'number' ? savedSize : 280,
+          dnd: savedDnd ?? false,
+        },
+        windows,
+      };
+    },
+
+    invokeContextItem(which: PetContextAction): void {
+      const menu = buildPetContextMenu();
+      const item = findMenuItem(menu, contextActionLabel(which));
+      if (!item) {
+        throw new Error(`Pet context menu is missing ${which}`);
+      }
+      const win = petHitWindow && !petHitWindow.isDestroyed() ? petHitWindow : undefined;
+      item.click(undefined, win, win?.webContents);
+    },
+
+    async invokeTrayItem(which: TrayPetAction): Promise<void> {
+      const { e2eInvokeTrayPetItem } = await import('@process/utils/tray');
+      await e2eInvokeTrayPetItem(which);
+    },
+
+    async readTrayShowHideLabel(): Promise<string> {
+      const { e2eReadTrayPetShowHideLabel } = await import('@process/utils/tray');
+      return e2eReadTrayPetShowHideLabel();
+    },
+
+    async dragStart(): Promise<void> {
+      await runInHitWindow('window.petHitAPI.dragStart()');
+    },
+
+    async dragEnd(): Promise<void> {
+      await runInHitWindow('window.petHitAPI.dragEnd()');
+    },
+
+    async clickBody(data: { side: string; count: number }): Promise<void> {
+      await runInHitWindow(`window.petHitAPI.click(${JSON.stringify(data)})`);
+    },
+
+    async setHitIgnoreMouseEvents(ignore: boolean): Promise<void> {
+      const arg = ignore ? 'true, { forward: true }' : 'false';
+      await runInHitWindow(`window.petHitAPI.setIgnoreMouseEvents(${arg})`);
+    },
+
+    /**
+     * Run the real `pet:set-ignore-mouse-events` handler synchronously.
+     * The hit-window watchdog keys off the flag that handler stores; calling
+     * it here avoids a renderer round-trip racing the 250ms poll.
+     */
+    forceHitIgnore(ignore: boolean): boolean {
+      const options = ignore ? { forward: true } : undefined;
+      ipcMain.emit('pet:set-ignore-mouse-events', null, ignore, options);
+      return lastHitIgnoreState;
+    },
+
+    async reset(): Promise<void> {
+      destroyPetWindow();
+      currentSize = 280;
+      confirmBubbleEnabled = true;
+      drawIgnoresMouse = true;
+      await ProcessConfig.set('pet.enabled', false);
+      await ProcessConfig.set('pet.size', 280);
+      await ProcessConfig.set('pet.dnd', false);
+    },
+  };
+
+  (globalThis as typeof globalThis & { [PET_E2E_GLOBAL]?: typeof api })[PET_E2E_GLOBAL] = api;
+}
+
+installPetE2EApi();

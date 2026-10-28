@@ -103,12 +103,32 @@ export function resolvePetPosition(options: {
   return clampToWorkArea(saved, size, best.workArea);
 }
 
+/** True when two finite points sit within `tolerance` pixels on both axes. */
+export function petPointsWithin(a: PetPoint | null, b: PetPoint | null, tolerance = 2): boolean {
+  if (!isPetPoint(a) || !isPetPoint(b)) return false;
+  return Math.abs(a.x - b.x) <= tolerance && Math.abs(a.y - b.y) <= tolerance;
+}
+
 /**
- * True when a position read matches the coordinates we just requested.
- * Native Wayland often no-ops setPosition/getPosition; a mismatch means the
- * read is not where the user left the pet, so it must not be saved.
+ * Position to store after a drag or Reset position.
+ *
+ * The value is always the window's own read-back (`getPosition` / `getBounds`),
+ * never the coordinate passed to `setPosition`. Native Wayland ignores
+ * `setPosition`, so writing the request would store a guess.
+ *
+ * Returns null when that read cannot be trusted: it failed, the window is
+ * still on its pre-move point (the move was ignored), or the read disagrees
+ * with the request and there is no pre-move point proving the window moved.
  */
-export function shouldPersistPetPosition(requested: PetPoint | null, actual: PetPoint | null, tolerance = 2): boolean {
-  if (!isPetPoint(requested) || !isPetPoint(actual)) return false;
-  return Math.abs(actual.x - requested.x) <= tolerance && Math.abs(actual.y - requested.y) <= tolerance;
+export function petPositionReadToSave(
+  before: PetPoint | null,
+  requested: PetPoint | null,
+  actual: PetPoint | null,
+  tolerance = 2
+): PetPoint | null {
+  if (!isPetPoint(actual) || !isPetPoint(requested)) return null;
+  const honored = petPointsWithin(requested, actual, tolerance);
+  const moved = isPetPoint(before) && !petPointsWithin(before, actual, tolerance);
+  if (!honored && !moved) return null;
+  return { x: actual.x, y: actual.y };
 }
