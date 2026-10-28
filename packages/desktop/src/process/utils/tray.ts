@@ -14,6 +14,7 @@ import {
 import * as path from 'path';
 import { ipcBridge } from '@/common';
 import i18n from '@process/services/i18n';
+import { isPetOverlayVisible, subscribePetOverlayVisible } from '../pet/petVisibility';
 
 let tray: TrayInstance | null = null;
 let closeToTrayEnabled = false;
@@ -111,6 +112,7 @@ const buildTrayContextMenu = async (): Promise<Electron.Menu> => {
 
   const recentConversations = await getRecentConversations();
   const runningTasksCount = getRunningTasksCount();
+  const petVisible = isPetOverlayVisible();
 
   const template: Electron.MenuItemConstructorOptions[] = [
     {
@@ -169,12 +171,17 @@ const buildTrayContextMenu = async (): Promise<Electron.Menu> => {
     label: `🐾 ${i18n.t('pet.desktopPet')}`,
     submenu: [
       {
-        label: i18n.t('pet.showHide'),
+        // Visibility only. Settings owns pet.enabled (create vs destroy).
+        // This item hides a visible pet, or shows windows that are still alive but hidden.
+        label: i18n.t(petVisible ? 'pet.hide' : 'common.show'),
         click: async () => {
           try {
             const petManager = await import('../pet/petManager');
-            // Toggle: if pet windows exist, hide; otherwise show/create
-            petManager.showPetWindow();
+            if (petManager.isPetWindowVisible()) {
+              petManager.hidePetWindow();
+            } else {
+              petManager.showPetWindow();
+            }
           } catch {
             /* pet not available */
           }
@@ -328,6 +335,10 @@ export const destroyTray = (): void => {
   }
 };
 
+subscribePetOverlayVisible(() => {
+  if (!tray) return;
+  void refreshTrayMenu();
+});
 type TrayPetAction = 'show-hide' | 'size-200' | 'size-280' | 'size-360';
 
 const findTrayMenuItem = (menu: Electron.Menu, label: string): Electron.MenuItem | undefined => {
