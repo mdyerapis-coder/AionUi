@@ -3,9 +3,18 @@ import type { Theme } from '@/common/theme/types';
 export type ConfigKeyMap = {
   language: string;
   'ui.zoomFactor': number | undefined;
+  'ui.fontSize.app': number | undefined;
   'ui.fontSize.chat': number | undefined;
   'ui.fontSize.markdown': number | undefined;
   'ui.fontSize.code': number | undefined;
+  'ui.fontFamily.app': string | undefined;
+  'ui.fontFamily.chat': string | undefined;
+  'ui.fontFamily.markdown': string | undefined;
+  'ui.fontFamily.code': string | undefined;
+  'ui.fontWeight.app': string | undefined;
+  'ui.fontWeight.chat': string | undefined;
+  'ui.fontWeight.markdown': string | undefined;
+  'ui.fontWeight.code': string | undefined;
   'window.bounds': { x?: number; y?: number; width: number; height: number } | undefined;
   'webui.desktop.enabled': boolean | undefined;
   'webui.desktop.allowRemote': boolean | undefined;
@@ -26,6 +35,8 @@ export type ConfigKeyMap = {
   'pet.size': number | undefined;
   'pet.dnd': boolean | undefined;
   'pet.confirmEnabled': boolean | undefined;
+  /** Last pet window position. Restored on launch when it still lies on a display. */
+  'pet.position': { x: number; y: number } | undefined;
   // Removed: 'system.autoPreviewOfficeFiles'. It gated "auto-open a preview tab
   // when an Office file appears in the workspace", a behaviour that was dropped
   // along with its hook — leaving the toggle would have been a switch the user

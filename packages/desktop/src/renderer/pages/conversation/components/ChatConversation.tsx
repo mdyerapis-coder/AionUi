@@ -16,7 +16,7 @@ import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistan
 import { iconColors } from '@/renderer/styles/colors';
 import { Button, Dropdown, Menu, Message, Tooltip, Typography } from '@arco-design/web-react';
 import { History } from '@icon-park/react';
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
@@ -25,16 +25,26 @@ import AcpChat from '../platforms/acp/AcpChat';
 import ChatLayout from './ChatLayout';
 import ChatSlider from './ChatSlider.tsx';
 import AcpModelSelector from '@/renderer/components/agent/AcpModelSelector';
+import AcpRuntimeRestartButton from '@/renderer/components/agent/AcpRuntimeRestartButton';
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
 import { getConversationCreateErrorMessage } from '@/renderer/pages/conversation/utils/conversationCreateError';
 import GoogleModelSelector from '../platforms/gemini/GoogleModelSelector';
 import AionrsChat from '../platforms/aionrs/AionrsChat';
 import AionrsModelSelector from '../platforms/aionrs/AionrsModelSelector';
 import { useAionrsModelSelection } from '../platforms/aionrs/useAionrsModelSelection';
+import {
+  AIONRS_RUNTIME_ENSURE_TIMEOUT_MS,
+  AIONRS_TURN_SETTLE_TIMEOUT_MS,
+  armAionrsSwitchReply,
+  reinitializeAionrsAfterModelChange,
+  waitForTurnToSettle,
+  withTimeout,
+} from '../platforms/aionrs/aionrsRuntimeSwitch';
 import { useConversationRuntimeView } from '../runtime/useConversationRuntimeView';
 import { isLegacyReadOnlyConversationType } from '../utils/conversationRuntime';
 import { resolveConversationBackend } from '../utils/conversationAssistantIdentity';
 import LegacyReadOnlyConversation from '../platforms/legacy/LegacyReadOnlyConversation';
+import SingleChatEmptyState from './SingleChatEmptyState';
 import { useActiveLease } from '../hooks/useActiveLease';
 // import SkillRuleGenerator from './components/SkillRuleGenerator'; // Temporarily hidden
 
@@ -149,21 +159,55 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
   sliderTitle,
 }) => {
   const runtimeView = useConversationRuntimeView(conversation.id);
+  const { t } = useTranslation();
   const onSelectModel = useCallback(
     async (_provider: IProvider, modelName: string) => {
       const selected = { ..._provider, use_model: modelName } as TProviderWithModel;
-      // Kill running agent on model switch — will be rebuilt with new model on next message
-      if (runtimeView.activeTurnId) {
-        const result = await ipcBridge.conversation.stop.invoke({
-          conversation_id: conversation.id,
-          turn_id: runtimeView.activeTurnId,
-        });
-        runtimeView.markStopAcknowledged(runtimeView.activeTurnId, result.runtime);
+      const turnId = runtimeView.activeTurnId;
+      // The backend kills the aionrs agent when `model` changes. Stop and wait
+      // until that turn has left `running` first, then rebuild the runtime so
+      // the next prompt is not sent at the session that kill just dropped.
+      const outcome = await reinitializeAionrsAfterModelChange({
+        activeTurnId: turnId,
+        blockBecauseBusy: runtimeView.isProcessing && !turnId,
+        stopTurn: async (activeTurnId) => {
+          const result = await ipcBridge.conversation.stop.invoke({
+            conversation_id: conversation.id,
+            turn_id: activeTurnId,
+          });
+          runtimeView.markStopAcknowledged(activeTurnId, result.runtime);
+        },
+        waitUntilIdle: (activeTurnId) =>
+          waitForTurnToSettle({
+            turnId: activeTurnId,
+            timeoutMs: AIONRS_TURN_SETTLE_TIMEOUT_MS,
+            readRuntime: async () => {
+              const current = await ipcBridge.conversation.get.invoke({ id: conversation.id });
+              const runtime = current.runtime;
+              if (!runtime) return null;
+              return { isProcessing: runtime.is_processing, turnId: runtime.turn_id };
+            },
+          }),
+        updateModel: async () =>
+          Boolean(await ipcBridge.conversation.update.invoke({ id: conversation.id, updates: { model: selected } })),
+        ensureRuntime: () =>
+          withTimeout(
+            ipcBridge.conversation.ensureRuntime
+              .invoke({ conversation_id: conversation.id })
+              .then((): void => undefined),
+            AIONRS_RUNTIME_ENSURE_TIMEOUT_MS,
+            new Error('aionrs runtime ensure timed out')
+          ),
+      });
+      if (outcome.status === 'updated') {
+        armAionrsSwitchReply(conversation.id);
+        if (!outcome.runtimeReady) Message.warning(t('agent.model.runtimeRestartFailed'));
+        return true;
       }
-      const ok = await ipcBridge.conversation.update.invoke({ id: conversation.id, updates: { model: selected } });
-      return Boolean(ok);
+      if (outcome.status === 'busy') Message.error(t('agent.model.switchFailed'));
+      return false;
     },
-    [conversation.id, runtimeView]
+    [conversation.id, runtimeView, t]
   );
 
   const modelSelection = useAionrsModelSelection({
@@ -181,7 +225,6 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
   // Mobile: model selection moved into the sendbox `+` action sheet to free up
   // header space; the dropdown stays available on desktop and tablets ≥768px.
   const isMobile = Boolean(layout?.isMobile);
-  const { t } = useTranslation();
   const runtimeConfig = useAcpConfigOptions({
     conversation_id: conversation.id,
     enabled: !isMobile,
@@ -233,11 +276,20 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
     presetAssistant: presetAssistantInfo ? { ...presetAssistantInfo, id: aionrsAssistantId } : undefined,
   };
 
+  const emptySlot = (
+    <SingleChatEmptyState
+      conversation_id={conversation.id}
+      assistant_name={presetAssistantInfo?.name}
+      assistant_backend={presetAssistantInfo?.backend}
+    />
+  );
+
   return (
     <ChatLayout {...chatLayoutProps} conversation_id={conversation.id}>
       <AionrsChat
         conversation_id={conversation.id}
         workspace={conversation.extra.workspace}
+        emptySlot={emptySlot}
         modelSelection={modelSelection}
         session_mode={conversation.extra?.session_mode}
         cron_job_id={cronJobId}
@@ -258,7 +310,14 @@ const ChatConversation: React.FC<{
   conversation?: TChatConversation;
   hideSendBox?: boolean;
 }> = ({ conversation, hideSendBox }) => {
+  const [runtimeReadyConversationId, setRuntimeReadyConversationId] = useState<string | null>(null);
   const { t } = useTranslation();
+  // Stable identity: the selector reports readiness from an effect keyed on this
+  // callback, so an inline arrow would re-run it on every render.
+  const handleRuntimeReadyChange = useCallback(
+    (ready: boolean) => setRuntimeReadyConversationId(ready ? (conversation?.id ?? null) : null),
+    [conversation?.id]
+  );
   useActiveLease({ type: 'conversation', id: conversation?.id });
   const workspaceEnabled = Boolean(conversation?.extra?.workspace) && !conversation?.project_id;
   const cronJobId = resolveCronJobId(conversation?.extra);
@@ -281,8 +340,17 @@ const ChatConversation: React.FC<{
 
   const conversationNode = useMemo(() => {
     if (!conversation || isAionrsConversation) return null;
+    // Greeting shown while the conversation has no messages yet (freshly created
+    // or cloned window). Each *Chat forwards it to MessageList's empty slot.
+    const emptySlot = (
+      <SingleChatEmptyState
+        conversation_id={conversation.id}
+        assistant_name={assistantDisplayName}
+        assistant_backend={resolvedConversationBackend}
+      />
+    );
     if (isLegacyReadOnlyConversation) {
-      return <LegacyReadOnlyConversation key={conversation.id} conversation={conversation} />;
+      return <LegacyReadOnlyConversation key={conversation.id} conversation={conversation} emptySlot={emptySlot} />;
     }
     switch (conversation.type) {
       case 'acp':
@@ -302,6 +370,7 @@ const ChatConversation: React.FC<{
             agent_name={assistantDisplayName}
             cron_job_id={cronJobId}
             hideSendBox={resolvedHideSendBox}
+            emptySlot={emptySlot}
             loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
             loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
             loadedMcpStatuses={
@@ -352,6 +421,7 @@ const ChatConversation: React.FC<{
           conversation_id={conversation.id}
           backend={resolvedConversationBackend}
           initialModelId={extra.current_model_id}
+          onRuntimeReadyChange={handleRuntimeReadyChange}
           waitForWarmup
         />
       );
@@ -384,6 +454,14 @@ const ChatConversation: React.FC<{
         </div>
       )}
       {modelSelector && <div className='shrink-0'>{modelSelector}</div>}
+      {conversation && conversation.type === 'acp' && !isMobile && !isLegacyReadOnlyConversation && (
+        <div className='shrink-0'>
+          <AcpRuntimeRestartButton
+            conversation_id={conversation.id}
+            availability={runtimeReadyConversationId === conversation.id ? 'ready' : 'initializing'}
+          />
+        </div>
+      )}
     </div>
   );
 
