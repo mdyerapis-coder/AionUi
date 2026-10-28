@@ -186,6 +186,33 @@ function resolvePackagedApp(): { executablePath: string; cwd: string } | null {
   return null;
 }
 
+function extraLaunchArgs(): string[] {
+  const launchArgs: string[] = [];
+  if (process.platform === 'linux' && (process.env.CI || process.env.E2E_NO_SANDBOX === '1')) {
+    launchArgs.push('--no-sandbox');
+  }
+  const ozone = process.env.E2E_OZONE_PLATFORM;
+  if (ozone) {
+    launchArgs.push(`--ozone-platform=${ozone}`);
+  }
+  if (process.env.E2E_DISABLE_GPU === '1') {
+    launchArgs.push('--disable-gpu');
+  }
+  return launchArgs;
+}
+
+function bundledAioncoreBin(projectRoot: string): string | undefined {
+  const binaryName = process.platform === 'win32' ? 'aioncore.exe' : 'aioncore';
+  const candidate = path.join(
+    projectRoot,
+    'resources',
+    'bundled-aioncore',
+    `${process.platform}-${process.arch}`,
+    binaryName
+  );
+  return fs.existsSync(candidate) ? candidate : undefined;
+}
+
 function shouldUsePackagedMode(): boolean {
   if (process.env.E2E_PACKAGED === '1') return true;
   if (process.env.E2E_DEV === '1') return false;
@@ -225,6 +252,25 @@ async function launchApp(): Promise<ElectronApplication> {
     AIONUI_CDP_PORT: process.env.AIONUI_CDP_PORT || '9230',
   };
 
+  // Dev Electron's resourcesPath points at Electron itself, so the pinned
+  // aioncore bundle under resources/bundled-aioncore is invisible unless we
+  // pass it explicitly. Packaged builds resolve that bundle on their own.
+  //
+  // The pet specs publish agent frames on the backend `/ws` the app is
+  // connected to. aioncore does not rebroadcast client frames, so dev mode
+  // runs a local proxy as AIONUI_BACKEND_BIN and points that proxy at the
+  // real binary. Packaged mode is unchanged.
+  if (!usePackaged && !commonEnv.AIONUI_BACKEND_BIN) {
+    const bundled = bundledAioncoreBin(projectRoot);
+    const proxy = path.join(projectRoot, 'tests', 'e2e', 'pet', 'backendWsProxy.mjs');
+    if (bundled && fs.existsSync(proxy)) {
+      commonEnv.AIONUI_E2E_AIONCORE_BIN = bundled;
+      commonEnv.AIONUI_BACKEND_BIN = proxy;
+    } else if (bundled) {
+      commonEnv.AIONUI_BACKEND_BIN = bundled;
+    }
+  }
+
   if (usePackaged) {
     const packaged = resolvePackagedApp();
     if (!packaged) {
@@ -236,14 +282,9 @@ async function launchApp(): Promise<ElectronApplication> {
 
     console.log(`[E2E] Launching PACKAGED app: ${packaged.executablePath}`);
 
-    const launchArgs: string[] = [];
-    if (process.platform === 'linux' && process.env.CI) {
-      launchArgs.push('--no-sandbox');
-    }
-
     const electronApp = await electron.launch({
       executablePath: packaged.executablePath,
-      args: launchArgs,
+      args: extraLaunchArgs(),
       cwd: packaged.cwd,
       env: {
         ...commonEnv,
@@ -258,13 +299,8 @@ async function launchApp(): Promise<ElectronApplication> {
   // Dev mode: launch via electron .
   console.log(`[E2E] Launching DEV app from: ${projectRoot}`);
 
-  const launchArgs = ['.'];
-  if (process.platform === 'linux' && process.env.CI) {
-    launchArgs.push('--no-sandbox');
-  }
-
   const electronApp = await electron.launch({
-    args: launchArgs,
+    args: ['.', ...extraLaunchArgs()],
     cwd: projectRoot,
     env: {
       ...commonEnv,
@@ -377,5 +413,30 @@ function registerCleanup(): void {
 }
 
 registerCleanup();
+
+/**
+ * Quit the shared Electron process and launch it again with the same E2E
+ * user-data directory. Pet persistence tests use this to observe startup.
+ * The singleton used by later tests is the new process.
+ */
+export async function restartElectronApp(): Promise<{ electronApp: ElectronApplication; page: Page }> {
+  if (app) {
+    const closing = app;
+    app = null;
+    mainPage = null;
+    try {
+      await closing.evaluate(async ({ app: electronApp }) => {
+        electronApp.exit(0);
+      });
+    } catch {
+      // The process may already be gone.
+    }
+    await closing.close().catch(() => {});
+  }
+
+  app = await launchApp();
+  mainPage = await resolveMainWindow(app);
+  return { electronApp: app, page: mainPage };
+}
 
 export { expect };
