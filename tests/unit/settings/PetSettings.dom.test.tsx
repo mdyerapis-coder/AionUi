@@ -6,24 +6,38 @@
 
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
-const { getPetEnabledMock, setPetEnabledMock, configServiceMock } = vi.hoisted(() => ({
-  getPetEnabledMock: vi.fn(),
-  setPetEnabledMock: vi.fn(() => Promise.resolve()),
-  configServiceMock: {
-    get: vi.fn(() => undefined),
-    setLocal: vi.fn(),
-    set: vi.fn(() => Promise.resolve()),
-  },
-}));
+const { getPetEnabledMock, setPetEnabledMock, getPetSizeMock, getPetDndMock, preferenceListeners, configServiceMock } =
+  vi.hoisted(() => ({
+    getPetEnabledMock: vi.fn(),
+    setPetEnabledMock: vi.fn(() => Promise.resolve()),
+    getPetSizeMock: vi.fn(() => Promise.resolve(280)),
+    getPetDndMock: vi.fn(() => Promise.resolve(false)),
+    preferenceListeners: new Set<(change: { size?: number; dnd?: boolean }) => void>(),
+    configServiceMock: {
+      get: vi.fn(() => undefined as unknown),
+      setLocal: vi.fn(),
+      set: vi.fn(() => Promise.resolve()),
+    },
+  }));
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
   systemSettings: {
     getPetEnabled: { invoke: getPetEnabledMock },
     setPetEnabled: { invoke: setPetEnabledMock },
+    getPetSize: { invoke: getPetSizeMock },
     setPetSize: { invoke: vi.fn(() => Promise.resolve()) },
+    getPetDnd: { invoke: getPetDndMock },
     setPetDnd: { invoke: vi.fn(() => Promise.resolve()) },
+    petPreferencesChanged: {
+      on: (callback: (change: { size?: number; dnd?: boolean }) => void) => {
+        preferenceListeners.add(callback);
+        return () => {
+          preferenceListeners.delete(callback);
+        };
+      },
+    },
     setPetConfirmEnabled: { invoke: vi.fn(() => Promise.resolve()) },
   },
 }));
@@ -81,6 +95,9 @@ const getEnableSwitch = () => within(screen.getByTestId('row-pet.enable')).getBy
 describe('PetSettings enable switch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    preferenceListeners.clear();
+    getPetSizeMock.mockResolvedValue(280);
+    getPetDndMock.mockResolvedValue(false);
     configServiceMock.get.mockImplementation(() => undefined);
   });
 
@@ -157,6 +174,59 @@ describe('PetSettings enable switch', () => {
       expect(getEnableSwitch()).not.toBeDisabled();
     });
     expect(getEnableSwitch().getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('shows the saved size from the main process when the config cache is stale', async () => {
+    getPetEnabledMock.mockResolvedValue(true);
+    getPetSizeMock.mockResolvedValue(360);
+    configServiceMock.get.mockImplementation((key: string) => (key === 'pet.size' ? 200 : undefined));
+    render(<PetSettings />);
+
+    await waitFor(() => {
+      expect(within(screen.getByTestId('row-pet.size')).getByRole('radio', { name: 'pet.sizeLarge' })).toBeChecked();
+    });
+  });
+
+  it('shows saved do-not-disturb from the main process when the config cache is stale', async () => {
+    getPetEnabledMock.mockResolvedValue(true);
+    getPetDndMock.mockResolvedValue(true);
+    configServiceMock.get.mockImplementation((key: string) => (key === 'pet.dnd' ? false : undefined));
+    render(<PetSettings />);
+
+    await waitFor(() => {
+      expect(within(screen.getByTestId('row-pet.dnd')).getByRole('switch')).toBeChecked();
+    });
+  });
+
+  it('updates size and do-not-disturb when the main process reports a menu change', async () => {
+    getPetEnabledMock.mockResolvedValue(true);
+    render(<PetSettings />);
+
+    await waitFor(() => {
+      expect(preferenceListeners.size).toBe(1);
+    });
+
+    const listener = [...preferenceListeners][0];
+    await act(async () => {
+      listener({ size: 200, dnd: true });
+    });
+
+    expect(within(screen.getByTestId('row-pet.size')).getByRole('radio', { name: 'pet.sizeSmall' })).toBeChecked();
+    expect(within(screen.getByTestId('row-pet.dnd')).getByRole('switch')).toBeChecked();
+    expect(configServiceMock.setLocal).toHaveBeenCalledWith('pet.size', 200);
+    expect(configServiceMock.setLocal).toHaveBeenCalledWith('pet.dnd', true);
+  });
+
+  it('keeps the cached size when the authoritative size read fails', async () => {
+    getPetEnabledMock.mockResolvedValue(true);
+    getPetSizeMock.mockRejectedValue(new Error('ipc failure'));
+    configServiceMock.get.mockImplementation((key: string) => (key === 'pet.size' ? 360 : undefined));
+    render(<PetSettings />);
+
+    await waitFor(() => {
+      expect(getPetSizeMock).toHaveBeenCalled();
+    });
+    expect(within(screen.getByTestId('row-pet.size')).getByRole('radio', { name: 'pet.sizeLarge' })).toBeChecked();
   });
 
   it('AC5: maps an undefined authoritative value to OFF at the UI', async () => {
