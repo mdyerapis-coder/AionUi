@@ -21,6 +21,7 @@ const DESKTOP_BUILTIN_IDS = [
   'webui',
   'pet',
   'system',
+  'archived',
   'about',
 ];
 
@@ -55,11 +56,11 @@ function iconType(icon: ReactElement): unknown {
 }
 
 describe('buildSettingsNavItems', () => {
-  it('includes teamModels and pet in the desktop builtin order', () => {
+  it('includes teamModels, archived, and pet in the desktop builtin order', () => {
     expect(idsOf(true)).toEqual(DESKTOP_BUILTIN_IDS);
   });
 
-  it('includes teamModels and omits pet off desktop', () => {
+  it('includes teamModels and archived, and omits pet off desktop', () => {
     expect(idsOf(false)).toEqual(DESKTOP_BUILTIN_IDS.filter((id) => id !== 'pet'));
   });
 
