@@ -720,6 +720,20 @@ describe('ScmPanel worktree aggregation in the Repositories section', () => {
     expect(document.querySelector('[data-scm-repo-toggle="scm:pe2"]')).toBeNull();
   });
 
+  it('gives a non-expandable repo a leading glyph slot so its name stays aligned', async () => {
+    installPort(worktreeWorkspace());
+    render(<ScmPanel projectId='p1' />);
+
+    await screen.findByText('a.ts');
+    // pe2 has no worktrees → no toggle button, but it must still occupy the same
+    // leading slot the toggle would, otherwise its name shifts a glyph-width left
+    // and misaligns with the expandable rows above it.
+    expect(document.querySelector('[data-scm-repo-toggle="scm:pe2"]')).toBeNull();
+    expect(document.querySelector('[data-scm-repo-glyph="scm:pe2"]')).not.toBeNull();
+    // The expandable primary uses the toggle for its slot, not the static glyph.
+    expect(document.querySelector('[data-scm-repo-glyph="scm:pe1"]')).toBeNull();
+  });
+
   it('collapses and re-expands the worktree children via the toggle, and persists', async () => {
     installPort(worktreeWorkspace());
     render(<ScmPanel projectId='p1' />);
@@ -798,18 +812,20 @@ describe('ScmPanel worktree aggregation in the Repositories section', () => {
 });
 
 describe('ScmPanel Changes section header consolidates actions (VS Code parity)', () => {
-  it('hosts refresh and stage-all on the Changes header, not a separate top toolbar', async () => {
+  it('hosts stage-all and the view toggle on the Changes header (refresh moved to the shared top bar)', async () => {
     installPort({ repositories: [repo()], firstFrames: { 'scm:pe1': status('scm:pe1', 1, [resource('a.ts')]) } });
     render(<ScmPanel projectId='p1' />);
 
     await screen.findByText('a.ts');
     const header = document.querySelector('[data-scm-section-header="changes"]') as HTMLElement;
-    // Refresh, stage-all and discard-all all live inside the Changes header row.
-    expect(header.querySelector('[data-scm-header-refresh]')).not.toBeNull();
+    // Stage-all and discard-all live inside the Changes header row…
     expect(header.querySelector('[data-scm-header-stage-all]')).not.toBeNull();
     expect(header.querySelector('[data-scm-header-discard-all]')).not.toBeNull();
-    // The view-as toggle is on the same row.
+    // …as does the view-as toggle.
     expect(header.querySelector('[data-scm-view-toggle]')).not.toBeNull();
+    // Refresh is NOT here anymore — it lives on the shared explorer top bar so a
+    // single control can both re-discover repos and re-pull status.
+    expect(header.querySelector('[data-scm-header-refresh]')).toBeNull();
   });
 
   it('drops the duplicate gray "changes" group title row but keeps the rows', async () => {
@@ -832,8 +848,6 @@ describe('ScmPanel Changes section header consolidates actions (VS Code parity)'
     await screen.findByText('conversation.explorer.scm.noChanges');
     const header = document.querySelector('[data-scm-section-header="changes"]') as HTMLElement;
     expect(header.querySelector('[data-scm-header-stage-all]')).toBeNull();
-    // Refresh is always available.
-    expect(header.querySelector('[data-scm-header-refresh]')).not.toBeNull();
   });
 });
 
