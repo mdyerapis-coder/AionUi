@@ -30,6 +30,8 @@
   "model": {
     "switchSuccess": "模型切换成功",
     "switchFailed": "模型切换失败",
+    "runtimeRestartFailed": "模型已保存，但助手没有重新上线。请再发一条消息；如果仍然没有回复，请再切换一次模型。",
+    "replyAfterSwitchTimeout": "切换后没有收到回复，已停止本轮，可以重新发送。",
     "searchPlaceholder": "搜索模型",
     "noResults": "没有匹配的模型"
   },

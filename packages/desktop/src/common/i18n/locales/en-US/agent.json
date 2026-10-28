@@ -30,6 +30,8 @@
   "model": {
     "switchSuccess": "Model switched successfully",
     "switchFailed": "Failed to switch model",
+    "runtimeRestartFailed": "The model was saved, but the assistant did not come back online. Send again, or switch models once more if the next reply never arrives.",
+    "replyAfterSwitchTimeout": "No reply arrived after the switch. The turn was stopped so you can send again.",
     "searchPlaceholder": "Search models",
     "noResults": "No matching models"
   },

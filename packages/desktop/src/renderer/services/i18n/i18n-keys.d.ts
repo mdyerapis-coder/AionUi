@@ -42,6 +42,8 @@ export type I18nKey =
   | 'agent.health.noAvailable'
   | 'agent.health.recommendSwitch'
   | 'agent.model.noResults'
+  | 'agent.model.replyAfterSwitchTimeout'
+  | 'agent.model.runtimeRestartFailed'
   | 'agent.model.searchPlaceholder'
   | 'agent.model.switchFailed'
   | 'agent.model.switchSuccess'
