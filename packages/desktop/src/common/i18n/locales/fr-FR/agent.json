@@ -31,7 +31,9 @@
     "switchSuccess": "Le modèle a changé avec succès",
     "switchFailed": "Échec du changement de modèle",
     "runtimeRestartFailed": "Le modèle a été enregistré, mais l’assistant n’est pas revenu en ligne. Renvoyez un message, ou changez encore de modèle si aucune réponse n’arrive.",
-    "replyAfterSwitchTimeout": "Aucune réponse après le changement. Le tour a été arrêté pour que vous puissiez renvoyer."
+    "replyAfterSwitchTimeout": "Aucune réponse après le changement. Le tour a été arrêté pour que vous puissiez renvoyer.",
+    "searchPlaceholder": "Rechercher des modèles",
+    "noResults": "Aucun modèle correspondant"
   },
   "config": {
     "setting": "Application du paramètre...",
@@ -47,5 +49,13 @@
   },
   "warmup": {
     "clickToWake": "Cliquez pour réveiller ce membre"
+  },
+  "runtimeRestart": {
+    "tooltip": "Reconnecter l'agent",
+    "confirmContent": "Redémarre le processus de l'agent pour qu'il prenne en compte les changements externes de configuration CLI (comme un changement de canal). L'historique du chat est conservé et la session est reprise si possible.",
+    "success": "Agent reconnecté",
+    "failed": "Échec de la reconnexion de l'agent",
+    "initializingTooltip": "L'agent est en cours d'initialisation. Reconnectez-le lorsqu'il sera prêt",
+    "processingTooltip": "Attendez la fin de la réponse en cours avant de reconnecter"
   }
 }

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Radio, Switch } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { systemSettings } from '@/common/adapter/ipcBridge';
@@ -15,12 +15,19 @@ import PreferenceRow from '@/renderer/components/settings/SettingsModal/contents
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
 import { useSettingsViewMode } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
 
+const isPetSize = (value: unknown): value is 200 | 280 | 360 => value === 200 || value === 280 || value === 360;
+
 const PetSettings: React.FC = () => {
   const [enabled, setEnabled] = useState(false);
   const [enabledResolved, setEnabledResolved] = useState(false);
-  const [size, setSize] = useState(280);
-  const [dnd, setDnd] = useState(false);
+  const [size, setSize] = useState<number>(() => {
+    const saved = configService.get('pet.size');
+    return isPetSize(saved) ? saved : 280;
+  });
+  const [dnd, setDnd] = useState(() => configService.get('pet.dnd') ?? false);
   const [confirmEnabled, setConfirmEnabled] = useState(true);
+  const sizeEdited = useRef(false);
+  const dndEdited = useRef(false);
   const { t } = useTranslation();
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
@@ -28,9 +35,49 @@ const PetSettings: React.FC = () => {
 
   useEffect(() => {
     let active = true;
-    setSize(configService.get('pet.size') ?? 280);
-    setDnd(configService.get('pet.dnd') ?? false);
     setConfirmEnabled(configService.get('pet.confirmEnabled') ?? true);
+
+    const applySize = (value: number): void => {
+      if (!isPetSize(value)) return;
+      setSize(value);
+      configService.setLocal('pet.size', value);
+    };
+    const applyDnd = (value: boolean): void => {
+      setDnd(value);
+      configService.setLocal('pet.dnd', value);
+    };
+
+    // Main process ProcessConfig is the source of truth. The configService cache
+    // can lag behind menu and tray changes, and behind a restart. A change event
+    // that arrives while the initial read is in flight wins over that read.
+    let sawSizeEvent = false;
+    let sawDndEvent = false;
+    const unsubscribe = systemSettings.petPreferencesChanged.on((change) => {
+      if (!active) return;
+      if (typeof change.size === 'number') {
+        sawSizeEvent = true;
+        applySize(change.size);
+      }
+      if (typeof change.dnd === 'boolean') {
+        sawDndEvent = true;
+        applyDnd(change.dnd);
+      }
+    });
+
+    void (async () => {
+      try {
+        const [nextSize, nextDnd] = await Promise.all([
+          systemSettings.getPetSize.invoke(),
+          systemSettings.getPetDnd.invoke(),
+        ]);
+        if (!active) return;
+        if (!sawSizeEvent && !sizeEdited.current) applySize(nextSize);
+        if (!sawDndEvent && !dndEdited.current) applyDnd(nextDnd);
+      } catch {
+        // Keep the values seeded from the local cache.
+      }
+    })();
+
     systemSettings.getPetEnabled
       .invoke()
       .then((value) => {
@@ -47,6 +94,7 @@ const PetSettings: React.FC = () => {
       });
     return () => {
       active = false;
+      unsubscribe();
     };
   }, []);
 
@@ -61,6 +109,7 @@ const PetSettings: React.FC = () => {
 
   const handleSizeChange = useCallback(
     (val: number) => {
+      sizeEdited.current = true;
       const prevSize = size;
       setSize(val);
       configService.setLocal('pet.size', val);
@@ -73,6 +122,7 @@ const PetSettings: React.FC = () => {
   );
 
   const handleDndChange = useCallback((checked: boolean) => {
+    dndEdited.current = true;
     setDnd(checked);
     configService.setLocal('pet.dnd', checked);
     systemSettings.setPetDnd.invoke({ dnd: checked }).catch(() => {
