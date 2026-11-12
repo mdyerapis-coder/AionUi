@@ -49,7 +49,7 @@ Formatting rules (Oxfmt, Prettier-compatible):
 
 ### Internationalization (i18n)
 
-New or changed user-facing text must use i18n keys; do not introduce hardcoded strings. Languages and modules are defined in `packages/desktop/src/common/config/i18n-config.json`.
+New or changed user-facing text must use i18n keys; do not introduce hardcoded strings. Languages and modules are defined in `packages/desktop/src/common/config/i18n-config.json`; the translation files live in `packages/desktop/src/renderer/services/i18n/locales/`.
 
 See the `i18n` skill (`.claude/skills/i18n/SKILL.md`) for complete workflow, key naming, and validation steps.
 

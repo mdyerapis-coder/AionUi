@@ -34,7 +34,10 @@ packages/desktop/src/common/i18n/locales/             # Locale JSON shared by ma
 │   └── ...
 packages/desktop/src/renderer/services/i18n/
 ├── index.ts                                          # Renderer i18next configuration
-└── i18n-keys.d.ts                                    # AUTO-GENERATED — do not edit manually
+├── i18n-keys.d.ts                                    # AUTO-GENERATED — do not edit manually
+├── direction.ts                                      # RTL/LTR resolution
+├── format.ts                                         # Formatting helpers
+└── list.ts                                           # Language list for the UI
 ```
 
 ### Key Facts
