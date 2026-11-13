@@ -10,6 +10,7 @@ const DEEP_SLEEP_TIMEOUT = 600_000;
 const AI_DRIVEN_STATES = new Set([
   'working',
   'thinking',
+  'done',
   'error',
   'notification',
   'happy',
@@ -92,8 +93,14 @@ export class PetIdleTicker {
         this.computeEyeTracking(cursor.x, cursor.y);
       }
 
-      // Skip idle behavior during AI-driven states
-      if (AI_DRIVEN_STATES.has(currentState)) return;
+      // Activity holds the pet. Do not let stillness from that stretch count,
+      // or the first idle tick after a long turn jumps straight to yawning.
+      if (AI_DRIVEN_STATES.has(currentState)) {
+        this.mouseStillSince = Date.now();
+        this.randomIdlePlayed = false;
+        this.yawnTriggered = false;
+        return;
+      }
 
       const idleMs = Date.now() - this.mouseStillSince;
 
