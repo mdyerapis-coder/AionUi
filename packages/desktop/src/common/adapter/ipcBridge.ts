@@ -111,6 +111,7 @@ import {
   fromApiPaginatedConversations,
   toApiModelOptional,
 } from './apiModelMapper';
+import { REALTIME_CHANNELS } from './constant';
 import {
   httpDelete,
   httpGet,
@@ -425,7 +426,7 @@ export const conversation = {
     (p) => `/api/conversations/${p.conversation_id}/artifacts/${p.artifact_id}`,
     (p) => ({ status: p.status })
   ),
-  responseStream: wsEmitter<IResponseMessage>('message.stream'),
+  responseStream: wsEmitter<IResponseMessage>(REALTIME_CHANNELS.messageStream),
   userCreated: wsEmitter<{
     conversation_id: string;
     msg_id: string;
@@ -441,7 +442,7 @@ export const conversation = {
     status: 'finish' | 'pending';
     hidden: boolean;
     created_at: number;
-  }>('message.userCreated'),
+  }>(REALTIME_CHANNELS.userCreated),
   /** Fired when the agent actually consumes a mid-turn-delivered message
    * (claude command_lifecycle Started; codex synthetic receipt). Flips the
    * message row from 'pending' to 'finish'; correlate by `msg_id`, never by
@@ -453,7 +454,7 @@ export const conversation = {
     status: 'finish' | 'pending' | 'error';
   }>('message.statusChanged'),
   artifactStream: wsEmitter<IConversationArtifact>('conversation.artifact'),
-  turnCompleted: wsMappedEmitter<IConversationTurnCompletedEvent>('turn.completed', (raw) => {
+  turnCompleted: wsMappedEmitter<IConversationTurnCompletedEvent>(REALTIME_CHANNELS.turnCompleted, (raw) => {
     const r = raw as Record<string, unknown>;
     const rawLast = (r.last_message ?? r.lastMessage) as Record<string, unknown> | undefined;
     const last_message: IConversationTurnCompletedEvent['last_message'] = rawLast
@@ -1686,7 +1687,7 @@ export const cron = {
   onJobUpdated: wsEmitter<ICronJob>('cron.job-updated'),
   onJobRemoved: wsEmitter<{ job_id: string }>('cron.job-removed'),
   onJobExecuted: wsEmitter<{ job_id: string; status: 'ok' | 'error' | 'skipped' | 'missed'; error?: string }>(
-    'cron.job-executed'
+    REALTIME_CHANNELS.cronJobExecuted
   ),
 };
 
@@ -2432,13 +2433,13 @@ export const team = {
   mailboxChanged: wsEmitter<ITeamMailboxChangedEvent>('team.mailboxChanged'),
   sessionChanged: wsEmitter<ITeamSessionChangedEvent>('team.sessionChanged'),
   runAccepted: wsEmitter<ITeamRunEvent>('team.runAccepted'),
-  runStarted: wsEmitter<ITeamRunEvent>('team.runStarted'),
+  runStarted: wsEmitter<ITeamRunEvent>(REALTIME_CHANNELS.teamRunStarted),
   runUpdated: wsEmitter<ITeamRunEvent>('team.runUpdated'),
-  runCompleted: wsEmitter<ITeamRunEvent>('team.runCompleted'),
+  runCompleted: wsEmitter<ITeamRunEvent>(REALTIME_CHANNELS.teamRunCompleted),
   runCancelled: wsEmitter<ITeamRunEvent>('team.runCancelled'),
-  runFailed: wsEmitter<ITeamRunEvent>('team.runFailed'),
-  childTurnStarted: wsEmitter<ITeamChildTurnEvent>('team.childTurnStarted'),
-  childTurnCompleted: wsEmitter<ITeamChildTurnEvent>('team.childTurnCompleted'),
+  runFailed: wsEmitter<ITeamRunEvent>(REALTIME_CHANNELS.teamRunFailed),
+  childTurnStarted: wsEmitter<ITeamChildTurnEvent>(REALTIME_CHANNELS.teamChildTurnStarted),
+  childTurnCompleted: wsEmitter<ITeamChildTurnEvent>(REALTIME_CHANNELS.teamChildTurnCompleted),
   childTurnCancelled: wsEmitter<ITeamChildTurnEvent>('team.childTurnCancelled'),
   slotWorkChanged: wsEmitter<ITeamSlotWorkChangedEvent>('team.slotWorkChanged'),
 };
