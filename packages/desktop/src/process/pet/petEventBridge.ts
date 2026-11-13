@@ -7,9 +7,20 @@
 import { REALTIME_CHANNELS } from '@/common/adapter/constant';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { isErrorTipMessage } from '@/common/chat/chatLib';
+import {
+  parsePetPermissionFrame,
+  permissionIdsClosedByRemove,
+  type PetPermissionBubble,
+} from '@/common/chat/petPermission';
 import type { PetStateMachine } from './petStateMachine';
 import type { PetIdleTicker } from './petIdleTicker';
 import { AUTO_RETURN, type PetState, type StateChangeCallback } from './petTypes';
+
+/** Bubble open/close signals. The confirm window lives outside this bridge. */
+export type PetPermissionHooks = {
+  onOpen: (bubble: PetPermissionBubble) => void;
+  onClose: (ids: string[]) => void;
+};
 
 /**
  * Conversation and turn that produced the latest mapped frame.
@@ -76,6 +87,8 @@ export class PetEventBridge {
   /** True while this bridge is itself changing the machine, so restore does not recurse. */
   private publishing = false;
   private readonly onMachineState: StateChangeCallback;
+  private permissionHooks: PetPermissionHooks | null = null;
+  private openPermissions = new Map<string, PetPermissionBubble>();
 
   constructor(
     private sm: PetStateMachine,
@@ -85,6 +98,16 @@ export class PetEventBridge {
       this.restoreActivityAfterLocalIdle(state);
     };
     this.sm.onStateChange(this.onMachineState);
+  }
+
+  /** Receive permission bubbles parsed from `/ws`. Replaces any previous hooks. */
+  setPermissionHooks(hooks: PetPermissionHooks | null): void {
+    this.permissionHooks = hooks;
+  }
+
+  /** Permissions currently waiting on the user. */
+  getPendingPermissions(): PetPermissionBubble[] {
+    return [...this.openPermissions.values()];
   }
 
   /**
@@ -148,6 +171,9 @@ export class PetEventBridge {
         return;
       case REALTIME_CHANNELS.confirmationAdd:
         this.handleConfirmationAdd(readActivityContext(data));
+        return;
+      case REALTIME_CHANNELS.confirmationRemove:
+        this.closeRemovedPermissions(data);
         return;
       case REALTIME_CHANNELS.teamChildTurnStarted:
       case REALTIME_CHANNELS.teamRunStarted:
@@ -247,15 +273,22 @@ export class PetEventBridge {
       }
       return;
     }
-    if (type === 'acp_permission' || type === 'permission' || type === 'ask') {
+    if (type === 'acp_permission' || type === 'permission') {
+      this.presentPermission(data);
+      this.handleConfirmationAdd(context);
+      return;
+    }
+    if (type === 'ask') {
       this.handleConfirmationAdd(context);
       return;
     }
     if (type === 'finish') {
+      this.closePermissionsForConversation(context?.conversationId);
       this.handleTurnCompleted(context);
       return;
     }
     if (type === 'error' || isTipsError(data) || isAgentStatusError(data)) {
+      if (type === 'error') this.closePermissionsForConversation(context?.conversationId);
       this.apply('error', context);
     }
   }
@@ -297,12 +330,38 @@ export class PetEventBridge {
     const context = readActivityContext(data);
     const outcome = turnOutcome(data);
     if (outcome === 'error') {
+      this.closePermissionsForConversation(context?.conversationId);
       this.apply('error', context);
       return;
     }
     if (outcome === 'done' || outcome === 'cancel') {
+      this.closePermissionsForConversation(context?.conversationId);
       this.handleTurnCompleted(context);
     }
+  }
+
+  private presentPermission(frame: unknown): void {
+    const bubble = parsePetPermissionFrame(frame);
+    if (!bubble) return;
+    this.openPermissions.set(bubble.id, bubble);
+    this.permissionHooks?.onOpen(bubble);
+  }
+
+  private closeRemovedPermissions(event: unknown): void {
+    this.closePermissionIds(permissionIdsClosedByRemove(this.getPendingPermissions(), event));
+  }
+
+  /** Drop pending bubbles for one conversation. Missing id closes every pending bubble. */
+  private closePermissionsForConversation(conversationId?: string): void {
+    const ids = this.getPendingPermissions()
+      .filter((bubble) => !conversationId || bubble.conversationId === conversationId)
+      .map((bubble) => bubble.id);
+    this.closePermissionIds(ids);
+  }
+
+  private closePermissionIds(ids: string[]): void {
+    const closed = ids.filter((id) => this.openPermissions.delete(id));
+    if (closed.length > 0) this.permissionHooks?.onClose(closed);
   }
 
   private apply(state: PetState, context?: PetActivityContext): void {

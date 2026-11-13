@@ -14,13 +14,16 @@ contextBridge.exposeInMainWorld('petConfirmAPI', {
   onConfirmationUpdate: (callback: (data: any) => void) => {
     ipcRenderer.on('pet:confirm-update', (_event, data) => callback(data));
   },
-  onConfirmationRemove: (callback: (data: any) => void) => {
+  onConfirmationRemove: (callback: (data: { id: string }) => void) => {
     ipcRenderer.on('pet:confirm-remove', (_event, data) => callback(data));
+  },
+  onConfirmError: (callback: (data: { id: string }) => void) => {
+    ipcRenderer.on('pet:confirm-error', (_event, data) => callback(data));
   },
   onThemeChange: (callback: (theme: Theme) => void) => {
     ipcRenderer.on('pet:confirm-theme', (_event, theme) => callback(theme));
   },
-  respond: (data: { conversation_id: string; msg_id: string; call_id: string; data: any }) => {
+  respond: (data: { id: string; optionId: string }) => {
     ipcRenderer.send('pet:confirm-respond', data);
   },
   dragStart: () => {
