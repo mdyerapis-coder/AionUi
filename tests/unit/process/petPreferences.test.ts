@@ -240,6 +240,7 @@ vi.mock('@process/pet/petIdleTicker', () => ({
 vi.mock('@process/pet/petEventBridge', () => ({
   PetEventBridge: class {
     handleBridgeMessage(): void {}
+    setPermissionHooks(): void {}
     dispose(): void {}
   },
 }));
